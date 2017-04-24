@@ -76,7 +76,7 @@ folds_to_train_test <- function(test_fold_name, all_folds) {
 # predicted
 # returns: list of 6: param, confusion_matrix, coeffs_df, model, auroc, auprc
 run_and_validate_model <- function(param, train_validate) {
-  print(paste("run_and_validate_model : model_type = ", model_type, "param = ", param, sep = ""))
+  #print(paste("run_and_validate_model : model_type = ", model_type, "param = ", param, sep = ""))
   train_set <- train_validate[[1]]
   test_set <- train_validate[[2]]
   # hm, we gotta get rid of the cols that are all identical if there are any (0s sometimes)
