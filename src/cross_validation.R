@@ -76,7 +76,7 @@ folds_to_train_test <- function(test_fold_name, all_folds) {
 # predicted
 # returns: list of 6: param, confusion_matrix, coeffs_df, model, auroc, auprc
 run_and_validate_model <- function(param, train_validate) {
-  print(paste("run_and_validate_model : model_name = ", model_name, "param = ", param, sep = ""))
+  print(paste("run_and_validate_model : model_type = ", model_type, "param = ", param, sep = ""))
   train_set <- train_validate[[1]]
   test_set <- train_validate[[2]]
   # hm, we gotta get rid of the cols that are all identical if there are any (0s sometimes)
@@ -286,12 +286,12 @@ pstar_avg <- mean(bests_by_fold_table$best_param)
 print(paste("mean_param = "), pastar_avg, sep = "")
 
 # grab the "within_params_list" entries and build a table
-foldout_table <- paste(outdir, "/", model_name ,"_within_folds_param_vs_aurocs.txt", sep = "")
+foldout_table <- paste(outdir, "/", model_type ,"_within_folds_param_vs_aurocs.txt", sep = "")
 within_folds_table <- map_df(map(bests_by_fold, "within_params_list"), I)
 print(as.data.frame(within_folds_table), row.names = FALSE)
 write.table(within_folds_table, file = foldout_table, quote = F, sep = "\t", row.names = F)
 
-foldout_plot <- paste(outdir, "/", model_name ,"_within_folds_param_vs_aurocs.png", sep = "")
+foldout_plot <- paste(outdir, "/", model_type ,"_within_folds_param_vs_aurocs.png", sep = "")
 df <- within_folds_table
 df$fold_name <- as.character(df$fold_name)
 g <- ggplot(df) + geom_line(aes(x = param, y = auroc, color = fold_name)) +
