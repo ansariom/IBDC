@@ -297,9 +297,10 @@ write.table(within_folds_table, file = foldout_table, quote = F, sep = "\t", row
 foldout_plot <- paste(outdir, "/", model_type ,"_within_folds_param_vs_aurocs.png", sep = "")
 df <- within_folds_table
 df$fold_name <- as.character(df$fold_name)
+plot_title <- paste(model_type, " Features", sep = "")
 g <- ggplot(df) + geom_line(aes(x = param, y = auroc, color = fold_name)) +
   expand_limits(y = c(0.80, 1.0)) +
-  ggtitle("ROE features") 
+  ggtitle(plot_title) 
 ggsave(g, filename = foldout_plot)
 
 ######### Line plots end
