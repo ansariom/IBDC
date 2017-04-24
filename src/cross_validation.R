@@ -257,7 +257,7 @@ lapply <- function(...) {parLapply(cl, ...)}
 
 # we'll try a bunch of different params
 #possible_params <- as.list(10^seq(-6,-1,0.2))
-possible_params <- as.list(seq(0.00005, 0.001, 0.00005))
+possible_params <- as.list(seq(0.0001, 0.01, 0.0001))
 
 print("trying params:")
 print(unlist(possible_params))
@@ -278,14 +278,14 @@ print("Create Plots ....")
 # make it into a table
 # grab everything but the "within_params_list" entries and build a table
 # map_df -> turns some parts of a list into a dataframe - from purrr library
-bestfolds_table <- paste(outdir, "/", model_type ,"_bests_by_folds_param_vs_aurocs.png", sep = "")
+bestfolds_table <- paste(outdir, "/", model_type ,"_bests_by_folds_param_vs_aurocs.txt", sep = "")
 bests_by_fold_table <- map_df(bests_by_fold, .f = function(x) {return(x[!names(x) %in% c("within_params_list", "test_coeffs_df", "train_set", "test_set", "best_model")])} )
 write.table(bests_by_fold_table, file = bestfolds_table, quote = F, sep = "\t", row.names = F)
 print(bests_by_fold_table)
 
 pstar_avg <- mean(bests_by_fold_table$best_param)
 #pstar_avg <- 0.0005
-print(paste("mean_param = "), pstar_avg, sep = "")
+print(paste("mean_param = ", pstar_avg, sep = ""))
 
 # grab the "within_params_list" entries and build a table
 foldout_table <- paste(outdir, "/", model_type ,"_within_folds_param_vs_aurocs.txt", sep = "")
