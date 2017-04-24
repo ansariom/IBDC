@@ -199,9 +199,9 @@ if(length(args) < 5) {
 }
 
 input_features <- args[1]
-nfolds <- args[2]
+nfolds <- as.numeric(args[2])
 outdir <- args[3]
-ncpu <- args[4]
+ncpu <- as.numeric(args[4])
 model_type = args[5]
 
 # chosen by fair die roll, gauranteed to be random
