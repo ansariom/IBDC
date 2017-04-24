@@ -1,12 +1,16 @@
+#!/usr/bin/Rscript
+
 library(LiblineaR)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
-library(e1071) # for svm with prob output
+#library(e1071) # for svm with prob output
 library(PRROC)
 library(rstackdeque)
 library(purrr)
 library(parallel)
+
+path <- "/nfs0/BPP/Megraw_Lab/mitra/Projects/IDBC/github/IBDC/exe/ibdc_small_test_1"
 
 # adds a "class" column of either "leaf_specific" or "root_specific" based
 # on the threshold, assumes the present of column "b" (fold change) and "qval" (Q value)
@@ -82,11 +86,12 @@ run_and_validate_model <- function(param, train_validate) {
 # chosen by fair die roll, gauranteed to be random
 set.seed(55) # 55 originally
 
-setwd("~/Documents/cgrb/pis/Megraw/tss_seq_scripts/")
+#setwd("~/Documents/cgrb/pis/Megraw/tss_seq_scripts/")
+setwd(path)
 
 # load the features and differential expression data
 # into all_features_diffs_wide
-load("big_merged_roe_pseudoCounts_0.01_PEATcore_Hughes_NoDups_overallOC.rdat")
+load("all_features_diffs_wide.rdat")
 
 rownames(all_features_diffs_wide) <- all_features_diffs_wide$tss_name
 # all_features_diffs_wide <- all_features_diffs_wide[,!colnames(all_features_diffs_wide) %in% c("OC_P_OVERALL_ROOT", "OC_P_OVERALL_LEAF")]

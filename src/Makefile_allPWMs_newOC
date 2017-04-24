@@ -8,15 +8,15 @@ pwm = $(datadir)/tair10/peat_core_plus_hughes.mat
 
 threshold_oc = 4
 
-input_tss_fastq_leaf = $(fastq_dir)/arab_tss_leaf.fastq
-input_tss_fastq_root = $(fastq_dir)/arab_tss_root.fastq
-input_oc_fastq_leaf = $(fastq_dir)/arab_leaf_oc_12hr_20bp.fastq
-input_oc_fastq_root = $(fastq_dir)/arab_root_oc_12hr_20bp.fastq
+input_tss_fastq_leaf = $(fastq_dir)/ath_tss_leaf.fastq
+input_tss_fastq_root = $(fastq_dir)/ath_tss_root.fastq
+input_oc_fastq_leaf = $(fastq_dir)/ath_leaf_oc_12hr_20bp.fastq
+input_oc_fastq_root = $(fastq_dir)/ath_root_oc_12hr_20bp.fastq
 input_expr_diff = $(datadir)/diff_exp_results.txt
 
 pseudoCounts = 0.01
 
-prefix = ibdc_tiled50
+prefix = ibdc_newOC_tile100
 
 queues = megraw,bpp
 premadefiles = $(datadir)/alignments
@@ -85,8 +85,10 @@ endif
 
 %aligned.peaks.annotated.capped_leaf.filtered: %aligned.peaks.annotated_leaf.capped
 	echo DEPS $*aligned.peaks.annotated.capped_leaf.filtered: $*aligned.peaks.annotated_leaf.capped
-	echo "cat $(prefix)/aligned.peaks.annotated_leaf.capped | awk -F ',' '{if(NR == 1) {print \$$0} else if( \$$NF > 50 ) { print \$$0 | \"sort -t, -k5,5nr\"} }' > $(prefix)/aligned.peaks.annotated.capped_leaf.filtered" |\
+	echo "cat $(prefix)/aligned.peaks.annotated_leaf.capped | awk -F ',' '{if(NR == 1) {print \$$0} else if( \$$NF > 50 ) { print \$$0 | \"sort -t, -k5,5nr\"} }' | awk -F ',' '{if(NR == 1) {print \$$0} else if(\$$9 == \"tss\" || \$$9 == \"<250\" || \$$9 == \"<500\" || \$$9 == \"5'\''utr\") {print \$$0}}' > $(prefix)/aligned.peaks.annotated.capped_leaf.filtered"  |\
 		SGE_Array -q $(queues) -m 1G -r $(prefix)/j6_filter_by_capped_logs_leaf --hold_names $(prefix)/j5_capfilter_cap_logs_leaf
+
+
 
 
 # SET 2
