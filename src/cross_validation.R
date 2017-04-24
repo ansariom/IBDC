@@ -257,7 +257,7 @@ lapply <- function(...) {parLapply(cl, ...)}
 
 # we'll try a bunch of different params
 #possible_params <- as.list(10^seq(-6,-1,0.2))
-possible_params <- as.list(seq(0.0001, 0.01, 0.0001))
+possible_params <- as.list(seq(0.0001, 0.003, 0.0002))
 
 print("trying params:")
 print(unlist(possible_params))
@@ -284,8 +284,9 @@ write.table(bests_by_fold_table, file = bestfolds_table, quote = F, sep = "\t", 
 print(bests_by_fold_table)
 
 pstar_avg <- mean(bests_by_fold_table$best_param)
-#pstar_avg <- 0.0005
 print(paste("mean_param = ", pstar_avg, sep = ""))
+param_file <- paste(outdir, "/", model_type, "_param_mean.txt", sep = "")
+write.table(pstar_avg, param_file, quote = F, row.names = F, col.names = F)
 
 # grab the "within_params_list" entries and build a table
 foldout_table <- paste(outdir, "/", model_type ,"_within_folds_param_vs_aurocs.txt", sep = "")
@@ -302,3 +303,38 @@ g <- ggplot(df) + geom_line(aes(x = param, y = auroc, color = fold_name)) +
 ggsave(g, filename = foldout_plot)
 
 ######### Line plots end
+
+######## folds_final_test is a list of 2; first is a list of data frames (folds), second is the held out df
+print("Start running heldout test...")
+all_train <- do.call(rbind, folds_final_test$train_folds)
+print(paste("train set size : ", dim(all_train)))
+final_test <- folds_final_test$final_test
+print(paste("test set size: ", dim(final_test)))
+final_res <- run_and_validate_model(pstar_avg, list(all_train, final_test))
+
+model_file <- paste(outdir, "/", model_type, "_model.rdat", sep = "")
+save(final_res, file = model_file)
+print("model saved at: ", model_file, sep = "")
+
+### Test calls
+test_calls_features <- cbind(final_res$model$probabilities, final_res$model$predictions)
+colnames(test_calls_features)[1] <- "prob_class_0"
+colnames(test_calls_features)[2] <- "prob_class_1"
+colnames(test_calls_features)[3] <- "class_call"
+all_input_test_rows <- classed_features_diffs_wide[rownames(classed_features_diffs_wide) %in% rownames(final_test), ]
+
+test_outfile <- paste(outdir, "/", model_type, "_testout.table.txt")
+write.table(all_input_test_rows, file = test_outfile, quote = F)
+print("test is done!")
+
+###### Coefficients table #######
+print("Writing coef tables..")
+coef_df <- final_res$coeffs_df
+coef_df <- coef_df[order(-abs(coef_df$coefficients)),]
+coef_table <- paste(outdir, "/", model_type, "_coef-table.sorted.txt")
+write.table(coef_df, file = coef_table, quote = F, row.names = F)
+
+
+
+
+
