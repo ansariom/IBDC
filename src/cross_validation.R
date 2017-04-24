@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 library(LiblineaR)
 library(ggplot2)
 library(dplyr)
@@ -74,6 +76,7 @@ folds_to_train_test <- function(test_fold_name, all_folds) {
 # predicted
 # returns: list of 6: param, confusion_matrix, coeffs_df, model, auroc, auprc
 run_and_validate_model <- function(param, train_validate) {
+  print(paste("run_and_validate_model : model_name = ", model_name, "param = ", param, sep = ""))
   train_set <- train_validate[[1]]
   test_set <- train_validate[[2]]
   # hm, we gotta get rid of the cols that are all identical if there are any (0s sometimes)
@@ -81,8 +84,8 @@ run_and_validate_model <- function(param, train_validate) {
   # also we gotta not do this determination based on the "class" column
   train_keep_logical <- !unlist(lapply(train_set[,colnames(train_set) != "class"], function(col){sd(col) == 0}))
   train_keep_logical <- c(train_keep_logical, TRUE)
-  print(length(train_keep_logical))
-  print(dim(train_set))
+  #print(length(train_keep_logical))
+  #print(dim(train_set))
   train_set <- train_set[, train_keep_logical]
   test_set <- test_set[, train_keep_logical]
   
@@ -178,7 +181,7 @@ find_pstar <- function(fold_name, params_list, folds_list) {
 # returns a list (of lists) for each fold with lots of goodies
 n_fold_cross <- function(train_folds, possible_params) {
   train_folds_names <- as.list(names(train_folds))
-  print(train_folds_names)
+  #print(train_folds_names)
   bests_by_fold <- lapply(train_folds_names, find_pstar, possible_params, train_folds)
   return(bests_by_fold)
 }
@@ -190,8 +193,8 @@ n_fold_cross <- function(train_folds, possible_params) {
 ####################################
 args <- commandArgs(trailingOnly = TRUE)
 
-if(length(args) != 10) {
-  print("./cross_validation.R [all_features.rdat] [nfolds] [outdir] [ncpus]")
+if(length(args) < 5) {
+  print("./cross_validation.R [all_features.rdat] [nfolds] [outdir] [ncpus] [tile_only|roe_only|tile_roe]")
   quit()
 }
 
@@ -199,6 +202,7 @@ input_features <- args[1]
 nfolds <- args[2]
 outdir <- args[3]
 ncpu <- args[4]
+model_type = args[5]
 
 # chosen by fair die roll, gauranteed to be random
 set.seed(55) # 55 originally
@@ -207,20 +211,19 @@ set.seed(55) # 55 originally
 # into all_features_diffs_wide
 load(input_features)
 
-### : remove all but tiled features
-#all_features_diffs_wide <- all_features_diffs_wide[, !(grepl("(FWD|REV)", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]
-### or, remove tiled features
-all_features_diffs_wide <- all_features_diffs_wide[, !grepl("tile50", colnames(all_features_diffs_wide)) ]
+if (model_type == "tile_only") {
+  ### : remove all but tiled features
+  all_features_diffs_wide <- all_features_diffs_wide[, !(grepl("(FWD|REV)", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]
+} else if (model_type == "roe_only") {
+  ### or, remove tiled features
+  all_features_diffs_wide <- all_features_diffs_wide[, !grepl("tile", colnames(all_features_diffs_wide)) ]
+} 
 
 # set rownames to tss names
 rownames(all_features_diffs_wide) <- all_features_diffs_wide$tss_name
 
-# debug
-# all_features_diffs_wide <- all_features_diffs_wide[,!colnames(all_features_diffs_wide) %in% c("OC_P_OVERALL_ROOT", "OC_P_OVERALL_LEAF")]
-
 # define classes, get rid of unclassed columns
 classed_features_diffs_wide <- add_class(all_features_diffs_wide, qval_thresh = 0.05, fold_thres = 4)
-
 
 # NAs were introduced because many TSSs have overall OC features but not others
 ## todo: why is this again?
@@ -228,12 +231,10 @@ classed_features_diffs_wide <- classed_features_diffs_wide[complete.cases(classe
 print("Overall class sizes:")
 print(table(classed_features_diffs_wide$class))
 
-
 # strip out the differential expression stuff
 diffs_colnames <- c("gene_id", "pval", "qval", "b", "se_b", "mean_obs", "var_obs", 
                     "tech_var", "sigma_sq", "smooth_sigma_sq", "final_sigma_sq", 
                     "tss_name", "chr", "loc", "offset?")
-
 
 # differential expression data
 classed_diffs_info <- classed_features_diffs_wide[, diffs_colnames]
@@ -241,12 +242,9 @@ classed_diffs_info <- classed_features_diffs_wide[, diffs_colnames]
 classed_features_class <- classed_features_diffs_wide[, !colnames(classed_features_diffs_wide) %in% diffs_colnames]
 
 
-
 # split into 80% 8-fold set, and 20% final test
 folds_final_test <- split_data(classed_features_class, percent_train = 0.8, folds = nfolds)
 train_folds <- folds_final_test$train_folds
-
-# pstar_avg <- 0.0005
 
 # # make it all parallel...
 library(parallel)
@@ -259,15 +257,15 @@ lapply <- function(...) {parLapply(cl, ...)}
 
 # we'll try a bunch of different params
 #possible_params <- as.list(10^seq(-6,-1,0.2))
-possible_params <- as.list(seq(0.0001, 0.001, 0.0001))
+possible_params <- as.list(seq(0.00005, 0.001, 0.00005))
 
 print("trying params:")
 print(unlist(possible_params))
 names(possible_params) <- as.character(possible_params)
 
-
+print("Start running cross validation ..")
 bests_by_fold <- n_fold_cross(train_folds, possible_params)
-str(bests_by_fold[1])
+#str(bests_by_fold[1])
 
 print("cross-validation done!")
 ################################
@@ -283,19 +281,22 @@ print("Create Plots ....")
 bests_by_fold_table <- map_df(bests_by_fold, .f = function(x) {return(x[!names(x) %in% c("within_params_list", "test_coeffs_df", "train_set", "test_set", "best_model")])} )
 print(bests_by_fold_table)
 
+pstar_avg <- mean(bests_by_fold_table$best_param)
+#pstar_avg <- 0.0005
+print(paste("mean_param = "), pastar_avg, sep = "")
+
 # grab the "within_params_list" entries and build a table
-foldout_table <- paste(outdir, "/within_folds_param_vs_aurocs.txt", sep = "")
+foldout_table <- paste(outdir, "/", model_name ,"_within_folds_param_vs_aurocs.txt", sep = "")
 within_folds_table <- map_df(map(bests_by_fold, "within_params_list"), I)
 print(as.data.frame(within_folds_table), row.names = FALSE)
 write.table(within_folds_table, file = foldout_table, quote = F, sep = "\t", row.names = F)
 
-foldout_plot <- paste(outdir, "/within_folds_param_vs_aurocs.plot", sep = "")
+foldout_plot <- paste(outdir, "/", model_name ,"_within_folds_param_vs_aurocs.png", sep = "")
 df <- within_folds_table
 df$fold_name <- as.character(df$fold_name)
 g <- ggplot(df) + geom_line(aes(x = param, y = auroc, color = fold_name)) +
   expand_limits(y = c(0.80, 1.0)) +
   ggtitle("ROE features") 
 ggsave(g, filename = foldout_plot)
-
 
 ######### Line plots end
