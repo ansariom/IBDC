@@ -313,6 +313,10 @@ final_test <- folds_final_test$final_test
 print(paste("test set size: ", dim(final_test), sep = ""))
 final_res <- run_and_validate_model(pstar_avg, list(all_train, final_test))
 
+perf_out <- paste(outdir, "/", model_type, "_heldoutTest_performance.txt", sep = "")
+perf_df <- data.frame(auroc = final_res$auroc, auprc = final_res$auprc)
+write.table(perf_df, file = perf_out, sep = "\t", row.names = F, quote = F)
+
 model_file <- paste(outdir, "/", model_type, "_model.rdat", sep = "")
 save(final_res, file = model_file)
 #print("model saved at: ", model_file, sep = "")
@@ -325,7 +329,7 @@ colnames(test_calls_features)[3] <- "class_call"
 all_input_test_rows <- classed_features_diffs_wide[rownames(classed_features_diffs_wide) %in% rownames(final_test), ]
 
 test_outfile <- paste(outdir, "/", model_type, "_testout.table.txt", sep = "")
-write.table(all_input_test_rows, file = test_outfile, quote = F)
+write.table(all_input_test_rows, file = test_outfile, quote = F, sep = "\t")
 print("test is done!")
 
 ###### Coefficients table #######
@@ -333,7 +337,7 @@ print("Writing coef tables..")
 coef_df <- final_res$coeffs_df
 coef_df <- coef_df[order(-abs(coef_df$coefficients)),]
 coef_table <- paste(outdir, "/", model_type, "_coef-table.sorted.txt", sep = "")
-write.table(coef_df, file = coef_table, quote = F, row.names = F)
+write.table(coef_df, file = coef_table, quote = F, row.names = F, sep = "\t")
 
 
 
