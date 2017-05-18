@@ -1,3 +1,9 @@
+### The same parameters as Shawn's last run but fixed problems:
+## 1- OC-overlap computation now is faster (15 minutes for 200M records) and bugs corrected
+## 2- TSSs falling into <250 didn't have TranscriptID (NA was set before) as a result many peaks where absent from analysis
+## 3- Duplicate peaks are removed and OC_OVERALL is fixed now
+## Merge_features.R is faster now (2 hours before) because the NAs are removed from diff_expr and genes with >abs(4) fold change are present now
+
 datadir = db
 fastq_dir = $(datadir)/raw_data
 
@@ -19,18 +25,14 @@ pseudoCounts = 0.01
 up_oc = 0
 down_oc = 100
 
-tile_nucsUp = 500
-tile_nucsDown = 100
-tileWin = 50
+nfolds = 5
 
 tss_region_for_oc_overall = $(prefix)/tss_up$(up_oc)_down$(down_oc)_region.bed
 
-prefix = ibdc_tiled50_-500-100_davidTSS_allFixes
+prefix = ibdc_small_test_1
 
 queues = megraw,bpp
 premadefiles = $(datadir)/alignments
-
-nfolds = 5
 
 all: $(prefix)/all_features_diffs_wide.rdat
 	echo DEPS all: $(prefix)/all_features_diffs_wide.rdat
@@ -42,18 +44,23 @@ train: train_with_roe train_with_tile train_both
 
 train_with_roe:
 	echo DEPS $*all_features_diffs_wide.rdat
-	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 10 roe_only |\
-                SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_roe
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 roe_only |\
+                SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_roe
 
 train_with_tile:
 	echo DEPS $*all_features_diffs_wide.rdat
-	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 10 tile_only |\
-                SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_tile
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 tile_only |\
+                SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_tile
 
 train_both:
 	echo DEPS $*all_features_diffs_wide.rdat
-	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 10 tile_roe |\
-                SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_all
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 tile_roe |\
+		SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_all
+
+train_main: %all_features_diffs_wide.rdat
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 40 roe_only |\
+                SGE_Array -P 40 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test --hold-names $(prefix)/j1_merge_all_features
+
 skip_making_bams = 1
 
 # SET 1
@@ -221,7 +228,7 @@ endif
 
 %tiled_features_map.txt %tiled_features.rdat: %peaks_2000_region.fa %roe_3000.FWD.table %roe_3000.FWD.locs %roe_3000.FWD.cumscores %roe_3000.REV.table %roe_3000.REV.locs %roe_3000.REV.cumscores %peaks_3000_region.fa
 	echo DEPS $*tiled_features_map.txt $*tiled_features.rdat: $*peaks_2000_region.fa $*roe_3000.FWD.table $*roe_3000.FWD.locs $*roe_3000.FWD.cumscores $*roe_3000.REV.table $*roe_3000.REV.locs $*roe_3000.REV.cumscores $*peaks_3000_region.fa
-	echo java -Xms100G -Xmx200G -jar software/TFBS_Scanner_Suite_MitraEditted/tfbs_scan.jar GenFeaturesTiledWins --nucsUp $(tile_nucsUp) --nucsDown $(tile_nucsDown) --winWidth $(tileWin) --mapFile $(prefix)/tiled_features_map.txt -n 48 $(prefix)/peaks_2000_region.fa $(pwm) $(prefix)/tiled_features.rdat |\
+	echo java -Xms100G -Xmx200G -jar software/TFBS_Scanner_Suite_MitraEditted/tfbs_scan.jar GenFeaturesTiledWins --nucsUp 500 --nucsDown 100 --winWidth 100 --mapFile $(prefix)/tiled_features_map.txt -n 48 $(prefix)/peaks_2000_region.fa $(pwm) $(prefix)/tiled_features.rdat |\
 		SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j9b_genfeatures_tiled_logs --hold_names $(prefix)/j8_roefinder_logs,$(prefix)/j7b_peaks_narrow_region_logs
 
 

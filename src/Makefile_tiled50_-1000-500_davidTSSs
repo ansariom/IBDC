@@ -16,21 +16,19 @@ input_oc_fastq_root = $(fastq_dir)/ath_root_oc_12hr_20bp.fastq
 input_expr_diff = $(datadir)/diff_exp_results.txt
 
 pseudoCounts = 0.01
-up_oc = 0
-down_oc = 100
+up_oc = 100
+down_oc = 0
 
-tile_nucsUp = 500
-tile_nucsDown = 100
+tile_nucsUp = 1000
+tile_nucsDown = 500
 tileWin = 50
 
 tss_region_for_oc_overall = $(prefix)/tss_up$(up_oc)_down$(down_oc)_region.bed
 
-prefix = ibdc_tiled50_-500-100_davidTSS_allFixes
+prefix = ibdc_tiled$(tileWin)_-$(tile_nucsUp)-$(tile_nucsDown)_davidTSS_Apr24
 
 queues = megraw,bpp
 premadefiles = $(datadir)/alignments
-
-nfolds = 5
 
 all: $(prefix)/all_features_diffs_wide.rdat
 	echo DEPS all: $(prefix)/all_features_diffs_wide.rdat
@@ -38,23 +36,30 @@ all: $(prefix)/all_features_diffs_wide.rdat
 clean: 
 	rm -rf $(prefix)
 
+skip_making_bams = 1
+nfolds = 5
+
 train: train_with_roe train_with_tile train_both
 
 train_with_roe:
 	echo DEPS $*all_features_diffs_wide.rdat
-	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 10 roe_only |\
-                SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_roe
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 roe_only |\
+                SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_roe
 
 train_with_tile:
 	echo DEPS $*all_features_diffs_wide.rdat
-	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 10 tile_only |\
-                SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_tile
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 tile_only |\
+                SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_tile
 
 train_both:
 	echo DEPS $*all_features_diffs_wide.rdat
-	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 10 tile_roe |\
-                SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_all
-skip_making_bams = 1
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 tile_roe |\
+                SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_all
+
+train_main: %all_features_diffs_wide.rdat
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 40 roe_only |\
+                SGE_Array -P 40 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test --hold-names $(prefix)/j1_merge_all_features
+
 
 # SET 1
 ##################################

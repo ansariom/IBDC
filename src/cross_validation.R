@@ -205,8 +205,7 @@ ncpu <- as.numeric(args[4])
 model_type = args[5]
 
 # chosen by fair die roll, gauranteed to be random
-set.seed(55) # 55 originally
-
+set.seed(7100)
 # load the features and differential expression data
 # into all_features_diffs_wide
 load(input_features)
@@ -217,6 +216,12 @@ if (model_type == "tile_only") {
 } else if (model_type == "roe_only") {
   ### or, remove tiled features
   all_features_diffs_wide <- all_features_diffs_wide[, !grepl("tile", colnames(all_features_diffs_wide)) ]
+} else if (model_type == "oc_only") {
+  missing_cols <- all_features_diffs_wide[,1:15]
+  all_features_diffs_wide <- all_features_diffs_wide[, (grepl("_OC_", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]
+  all_features_diffs_wide <- cbind(missing_cols, all_features_diffs_wide)
+} else if (model_type == "tfbs_only" ) {
+  all_features_diffs_wide <- all_features_diffs_wide[, (!grepl("_OC_", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]
 } 
 
 # set rownames to tss names
@@ -257,7 +262,7 @@ lapply <- function(...) {parLapply(cl, ...)}
 
 # we'll try a bunch of different params
 #possible_params <- as.list(10^seq(-6,-1,0.2))
-possible_params <- as.list(seq(0.0001, 0.002, 0.0002))
+possible_params <- as.list(seq(0.0001, 0.003, 0.0002))
 
 print("trying params:")
 print(unlist(possible_params))

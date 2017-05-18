@@ -4,7 +4,6 @@ fastq_dir = $(datadir)/raw_data
 bowtie_db = $(datadir)/tair10/db
 gff = $(datadir)/tair10/TAIR10_GFF3_genes.gff
 genome = $(datadir)/tair10/genome.fas
-#pwm = $(datadir)/tair10/PEAT_core_PWMs.mat
 pwm = $(datadir)/tair10/peat_core_plus_hughes.mat
 
 threshold_oc = 4
@@ -19,18 +18,32 @@ pseudoCounts = 0.01
 up_oc = 0
 down_oc = 100
 
-tile_nucsUp = 500
-tile_nucsDown = 100
-tileWin = 50
+tile_nucsUp = 1000
+tile_nucsDown = 500
+tileWin = 100
 
 tss_region_for_oc_overall = $(prefix)/tss_up$(up_oc)_down$(down_oc)_region.bed
 
-prefix = ibdc_tiled50_-500-100_davidTSS_allFixes
+prefix = ibdc_tiled$(tileWin)_-$(tile_nucsUp)-$(tile_nucsDown)_jammPeaks
 
 queues = megraw,bpp
 premadefiles = $(datadir)/alignments
 
-nfolds = 5
+## JAMM Peaks related ###
+leaf_basename = "ath-leaf-1192"
+root_basename = "ath-root-1168"
+
+fragment_size = 20
+bin_size = 10
+m = normal
+chromsize_file = db/tair10_chromSize.txt
+
+leaf_covg_outfile = $(prefix)/$(leaf_basename).covg
+root_covg_outfile = $(prefix)/$(root_basename).covg
+
+
+
+#######################
 
 all: $(prefix)/all_features_diffs_wide.rdat
 	echo DEPS all: $(prefix)/all_features_diffs_wide.rdat
@@ -38,23 +51,30 @@ all: $(prefix)/all_features_diffs_wide.rdat
 clean: 
 	rm -rf $(prefix)
 
+skip_making_bams = 1
+nfolds = 5
+
 train: train_with_roe train_with_tile train_both
 
 train_with_roe:
 	echo DEPS $*all_features_diffs_wide.rdat
-	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 10 roe_only |\
-                SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_roe
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 roe_only |\
+                SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_roe
 
 train_with_tile:
 	echo DEPS $*all_features_diffs_wide.rdat
-	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 10 tile_only |\
-                SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_tile
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 tile_only |\
+                SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_tile
 
 train_both:
 	echo DEPS $*all_features_diffs_wide.rdat
-	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 10 tile_roe |\
-                SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_all
-skip_making_bams = 1
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 tile_roe |\
+                SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_all
+
+train_main: %all_features_diffs_wide.rdat
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 40 roe_only |\
+                SGE_Array -P 40 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test --hold-names $(prefix)/j1_merge_all_features
+
 
 # SET 1
 ##################################
@@ -89,10 +109,9 @@ endif
 
 %aligned_leaf.peaks: %aligned_leaf.bam
 	echo DEPS $*aligned_leaf.peaks: $*aligned_leaf.bam
-	echo java -Xmx9G -jar software/DavidPeakCallerV1.1/GenerateTSSsFromBAM.jar $(prefix)/aligned_leaf.bam $(prefix)/aligned_leaf.peaks 1\; rm -f Chr*.txt | \
+	echo software/jamm_peak_finder.sh $(prefix) $(fragment_size) $(bin_size) $(m) $(prefix)/aligned_leaf.bam $(chromsize_file) $(leaf_covg_outfile) \; software/generate_peaks_for_annotation.R $(leaf_covg_outfile) $(prefix)/aligned_leaf.peaks |\
 		SGE_Array -q $(queues) -m 20G -r $(prefix)/j3_peaks_logs_leaf --hold_names $(prefix)/j2_bowtie_logs_leaf
-
-
+	
 %aligned.peaks_leaf.annotated: %aligned_leaf.peaks
 	echo DEPS $*aligned.peaks_leaf.annotated: $*aligned_leaf.peaks
 	echo software/annotate_TSS_peaks.pl -p -G $(gff) $(prefix)/aligned_leaf.peaks \> $(prefix)/aligned.peaks_leaf.annotated | \
