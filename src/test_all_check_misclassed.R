@@ -10,7 +10,7 @@ library(rstackdeque)
 library(purrr)
 library(parallel)
 
-path <- "/nfs0/BPP/Megraw_Lab/mitra/Projects/IDBC/github/IBDC/exe/ibdc_small_test_1"
+path <- "~/Downloads/"
 
 # adds a "class" column of either "leaf_specific" or "root_specific" based
 # on the threshold, assumes the present of column "b" (fold change) and "qval" (Q value)
@@ -87,7 +87,7 @@ run_and_validate_model <- function(param, train_validate) {
 set.seed(55) # 55 originally
 
 #setwd("~/Documents/cgrb/pis/Megraw/tss_seq_scripts/")
-setwd(path)
+setwd("~/Downloads/")
 
 # load the features and differential expression data
 # into all_features_diffs_wide
@@ -124,6 +124,8 @@ feature_names <- data.frame(feature = colnames(features))
 feature_names$type <- "other"
 feature_names$type[grepl("FWD|REV", feature_names$feature)] <- "SLL"
 feature_names$type[grepl("(OC_P_ROOT)|(OC_P_LEAF)", feature_names$feature)] <- "OC"
+feature_names$type[grepl("(tile100)", feature_names$feature)] <- "SLL_TILED"
+feature_names$type[grepl("(tile100_OC_P_ROOT)|(tile100_OC_P_LEAF)", feature_names$feature)] <- "OC_TILED"
 
 oc_features <- feature_names[feature_names$type == "OC", ]
 oc_features <- extract(oc_features, feature, c("pwm", "strand", "window", "tissue"), regex = "(.+?)_(FWD|REV)_(.)_OC_P_(ROOT|LEAF)", remove = FALSE)
@@ -156,7 +158,7 @@ merge_by_rownames <- function(df1, df2) {
 train_data <- cbind(features[classes$class != -1000,], class = classes[classes$class != -1000, ])
 test_data <- cbind(features, classes)
 
-result <- run_and_validate_model(0.0005, list(train_data, test_data))
+result <- run_and_validate_model(0.00166, list(train_data, test_data))
 colnames(result$coeffs_df) <- c("coefficient", "feature")
 
 feature_info <- merge(feature_info, result$coeffs_df)
