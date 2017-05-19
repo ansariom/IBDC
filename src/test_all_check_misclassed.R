@@ -10,7 +10,7 @@ library(rstackdeque)
 library(purrr)
 library(parallel)
 
-path <- "~/Downloads/"
+#path <- "~/Downloads/"i
 
 # adds a "class" column of either "leaf_specific" or "root_specific" based
 # on the threshold, assumes the present of column "b" (fold change) and "qval" (Q value)
@@ -77,21 +77,24 @@ run_and_validate_model <- function(param, train_validate) {
   coeffs_df <- data.frame(coefficients, Feature = colnames(x_train_set_scaled), stringsAsFactors = FALSE)
   auroc <- PRROC::roc.curve(probabilities[test_set$class != -1000, "1"], weights.class0 = class_test_set[test_set$class != -1000], curve = TRUE)$auc
   auprc <- PRROC::pr.curve(probabilities[test_set$class != -1000, "1"], weights.class0 = class_test_set[test_set$class != -1000], curve = TRUE)$auc.davis.goadrich
-  
+ 
+  print(paste("auroc = ", auroc, sep = "")) 
+  print(paste("auprc = ", auprc, sep = "")) 
+
   retlist <- list(param = param, confusion_matrix = confusion_matrix, coeffs_df = coeffs_df, model = p, auroc = auroc, auprc = auprc)
   
   return(retlist)
 }
 
 # chosen by fair die roll, gauranteed to be random
-set.seed(55) # 55 originally
+#set.seed(55) # 55 originally
 
 #setwd("~/Documents/cgrb/pis/Megraw/tss_seq_scripts/")
-setwd("~/Downloads/")
+#setwd("~/Downloads/")
 
 # load the features and differential expression data
 # into all_features_diffs_wide
-load("all_features_diffs_wide.rdat")
+load("ibdc_tiled100_-1000-500_jammPeaks/all_features_diffs_wide.rdat")
 
 rownames(all_features_diffs_wide) <- all_features_diffs_wide$tss_name
 # all_features_diffs_wide <- all_features_diffs_wide[,!colnames(all_features_diffs_wide) %in% c("OC_P_OVERALL_ROOT", "OC_P_OVERALL_LEAF")]
@@ -155,10 +158,12 @@ merge_by_rownames <- function(df1, df2) {
   return(outdf)
 }
 
+model_param <- 0.00214
+
 train_data <- cbind(features[classes$class != -1000,], class = classes[classes$class != -1000, ])
 test_data <- cbind(features, classes)
 
-result <- run_and_validate_model(0.00166, list(train_data, test_data))
+result <- run_and_validate_model(model_param, list(train_data, test_data))
 colnames(result$coeffs_df) <- c("coefficient", "feature")
 
 feature_info <- merge(feature_info, result$coeffs_df)
