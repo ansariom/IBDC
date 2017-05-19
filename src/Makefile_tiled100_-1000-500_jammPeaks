@@ -58,6 +58,10 @@ nfolds = 5
 
 train: train_with_roe train_with_tile train_both
 
+test_on_alldata: 
+	echo software/test_all_check_misclassed.R $(prefix)/all_features_diffs_wide.rdat |\
+		SGE_Array -P 4 -q $(queues) -m 200G -r $(prefix)/j2_test_on_alldata
+
 train_with_roe:
 	echo DEPS $*all_features_diffs_wide.rdat
 	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 roe_only |\
