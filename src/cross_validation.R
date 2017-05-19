@@ -108,6 +108,11 @@ run_and_validate_model <- function(param, train_validate) {
                                 # cross = 10, # built-in cross validation; probably better to do it ourselves
                                 verbose = TRUE)
   
+  if (save_model == TRUE) {
+    print("Saving Model ..")
+    model_outfile <- paste(outdir, "/", model_type, "_model_whole.rdat", sep = "")
+    save(model, model_outfile)
+  }
   coefficients <- model$W
   # drop bias coefficient
   coefficients <- coefficients[1:(length(coefficients) - 1)]
@@ -203,9 +208,10 @@ nfolds <- as.numeric(args[2])
 outdir <- args[3]
 ncpu <- as.numeric(args[4])
 model_type = args[5]
+save_model <- FALSE
 
 # chosen by fair die roll, gauranteed to be random
-set.seed(7100)
+set.seed(1298)
 # load the features and differential expression data
 # into all_features_diffs_wide
 load(input_features)
@@ -316,6 +322,7 @@ all_train <- do.call(rbind, folds_final_test$train_folds)
 print(paste("train set size : ", dim(all_train), sep = ""))
 final_test <- folds_final_test$final_test
 print(paste("test set size: ", dim(final_test), sep = ""))
+save_model <- TRUE
 final_res <- run_and_validate_model(pstar_avg, list(all_train, final_test))
 
 perf_out <- paste(outdir, "/", model_type, "_heldoutTest_performance.txt", sep = "")
