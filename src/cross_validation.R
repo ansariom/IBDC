@@ -111,7 +111,7 @@ run_and_validate_model <- function(param, train_validate) {
   if (save_model == TRUE) {
     print("Saving Model ..")
     model_outfile <- paste(outdir, "/", model_type, "_model_whole.rdat", sep = "")
-    save(model, model_outfile)
+    save(model, file = model_outfile)
   }
   coefficients <- model$W
   # drop bias coefficient
@@ -261,7 +261,7 @@ train_folds <- folds_final_test$train_folds
 library(parallel)
 cl <- makeCluster(ncpu)
 clusterExport(cl, list("folds_to_train_validate_test", "train_folds",
-                       "run_and_validate_model"))
+                       "run_and_validate_model", "model_type", "save_model"))
 # replace lapply with parLapply
 lapply <- function(...) {parLapply(cl, ...)}
 
