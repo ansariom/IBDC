@@ -85,6 +85,13 @@ train_oc_only:
 	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 40 oc_only |\
 		SGE_Array -P 40 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_oc --hold-names $(prefix)/j1_merge_all_features
 
+get_features_info:
+	echo software/get_featureInfo_from_finalSavedModel.R $(prefix)/all_features_diffs_wide.rdat $(prefix)/roe_only_model_whole.rdat $(prefix)/featureinfo_features_diffsclasses.Rdata |\
+		SGE_Array -P 1 -q $(queues) -m 200G -r $(prefix)/j2_features_info
+		
+#SGE_Array -P 1 -q $(queues) -m 200G -r $(prefix)/j2_features_info --hold-names $(prefix)/j1_crossval_train_test_roe
+
+
 # SET 1
 ##################################
 ###
