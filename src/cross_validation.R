@@ -110,9 +110,12 @@ run_and_validate_model <- function(param, train_validate) {
   
   if (save_model == TRUE) {
     print("Saving Model ..")
-    model_outfile <- paste(outdir, "/", model_type, "_model_whole.rdat", sep = "")
+    model_outfile <- paste(outdir, "/", model_type, "_model.rdat", sep = "")
     save(model, file = model_outfile)
-  }
+    print(attr(x_train_set_scaled, "scaled:center"))
+    scale_center_outfile <- paste(outdir, "/", model_type, "_x_train_set_scaled.rdat", sep = "")
+    save(x_train_set_scaled, file = scale_center_outfile)
+}
   coefficients <- model$W
   # drop bias coefficient
   coefficients <- coefficients[1:(length(coefficients) - 1)]

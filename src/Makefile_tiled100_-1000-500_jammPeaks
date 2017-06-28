@@ -56,7 +56,7 @@ clean:
 skip_making_bams = 1
 nfolds = 5
 
-train: train_with_roe train_with_tile train_both
+train: train_with_roe
 
 test_on_alldata: 
 	echo software/test_all_check_misclassed.R $(prefix)/all_features_diffs_wide.rdat |\
