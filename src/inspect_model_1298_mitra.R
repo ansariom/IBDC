@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 library(tidyr)
 library(ggplot2)
 #library(NeatMap)
@@ -16,10 +18,21 @@ normalize_vector_01 <- function(x) {
   (x-min(x))/(max(x)-min(x))
 }
 
+offline = FALSE
+
 # load the data
-if(TRUE) {
+if(offline == TRUE) {
   setwd("~/Downloads/")
   load("featureinfo_features_diffsclasses.Rdata")
+  load("roe_only_x_train_set_scaled.rdat")
+  outdir <- "~/Downloads/plots"
+} else {
+	args <- commandArgs(trailingOnly = TRUE)	
+	feature_info <- args[1]
+	scale_file <- args[2]
+	outdir <- args[3]
+	load(feature_info)
+	load(scale_file)	
 }
 
 # make a dataframe of just calls & true class information
@@ -29,7 +42,7 @@ colnames(true_class) <- "true_class"
 info <- merge_by_rownames(prob1, true_class)
 
 # normalize the data feature cols. Use scaling relative to the trained model
-load("roe_only_x_train_set_scaled.rdat")
+#load("roe_only_x_train_set_scaled.rdat")
 features_scaled <- as.data.frame(scale(features, attr(x_train_set_scaled, "scaled:center"), attr(x_train_set_scaled, "scaled:scale")))
 
 # multiply them by the coefficients
@@ -69,7 +82,7 @@ leaf_specific <- features_product_info[which(features_product_info$true_class > 
 #rn <- r[which(diff > cutoff)]
 #ln <- l[which(diff > cutoff)]
 
-outdir <- "~/Downloads/plots"
+#outdir <- "~/Downloads/plots"
 
 compute_diff <- function(list_of_pairs, root_specific, leaf_specific) {
   #print(list_of_pairs)
@@ -83,7 +96,7 @@ compute_diff <- function(list_of_pairs, root_specific, leaf_specific) {
   diff <- abs(root_spec_values - leaf_spec_values)
   
   if (sd(diff) == 0) { 
-    #print(paste(i,j, sep = ","))
+    print(paste(i,j, sep = ","))
     next
   }
   
@@ -92,7 +105,7 @@ compute_diff <- function(list_of_pairs, root_specific, leaf_specific) {
   for (cutoff in cutoffs) {
     d <- diff[which(diff > cutoff)]
     
-    if (length(d) < 10 ) {
+    if (length(d) < 100 ) {
       q <- qplot(diff, data=data.frame(diff), geom="histogram", alpha=I(.3), col=I("red"),fill=I("blue")) + 
         ggtitle(paste("Difference between ", i, j,sep = ","))
       outfile <- paste(outdir, "/", i, "_", j, ".png", sep = "");
@@ -124,8 +137,8 @@ cl <- makeCluster(no_cores)
 root_index <- nrow(root_specific)
 leaf_index <- nrow(leaf_specific)
 list_of_pairs = list()
-for(i in 1:3) {
-  for (j in 1:2) {
+for(i in 1:2) {
+  for (j in 1:3) {
     l <- list(i=i, j=j)
     list_of_pairs <- c(list_of_pairs,list(l))
   }
@@ -133,7 +146,10 @@ for(i in 1:3) {
 result <- parLapply(cl, list_of_pairs, compute_diff, root_specific, leaf_specific)
 all <- as.data.frame(matrix(unlist(result), byrow = T, ncol = 5))
 colnames(all) <- c("root_index", "leaf_index", "cutoff", "num_diffs", "cor_coef")
+
+table_outfile <- paste(outdir, "/table_out.txt", sep = "")
 write.table(all, file = table_outfile, row.names = F, quote = F, sep = "\t")
+
 #print(result)
 #all_results <- rbind(all_results, unlist(result))
 #all_results <- c(all_results, result)
