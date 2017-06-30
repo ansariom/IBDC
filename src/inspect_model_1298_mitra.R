@@ -84,8 +84,9 @@ leaf_specific <- features_product_info[which(features_product_info$true_class > 
 
 #outdir <- "~/Downloads/plots"
 
-compute_diff <- function(list_of_pairs, root_specific, leaf_specific) {
+compute_diff <- function(list_of_pairs) {
   #print(list_of_pairs)
+  library(ggplot2)
   cutoffs <- c(0.2, 0.3, 0.4)
   i = as.numeric(list_of_pairs$i)
   j = as.numeric(list_of_pairs$j)
@@ -105,7 +106,7 @@ compute_diff <- function(list_of_pairs, root_specific, leaf_specific) {
   for (cutoff in cutoffs) {
     d <- diff[which(diff > cutoff)]
     
-    if (length(d) < 100 ) {
+    if (length(d) < 20 ) {
       q <- qplot(diff, data=data.frame(diff), geom="histogram", alpha=I(.3), col=I("red"),fill=I("blue")) + 
         ggtitle(paste("Difference between ", i, j,sep = ","))
       outfile <- paste(outdir, "/", i, "_", j, ".png", sep = "");
@@ -143,7 +144,9 @@ for(i in 1:2) {
     list_of_pairs <- c(list_of_pairs,list(l))
   }
 }
-result <- parLapply(cl, list_of_pairs, compute_diff, root_specific, leaf_specific)
+
+clusterExport(cl, list("outdir", "root_specific", "leaf_specific"))
+result <- parLapply(cl, list_of_pairs, compute_diff)
 all <- as.data.frame(matrix(unlist(result), byrow = T, ncol = 5))
 colnames(all) <- c("root_index", "leaf_index", "cutoff", "num_diffs", "cor_coef")
 
