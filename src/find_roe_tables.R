@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 ## Peak finding
 #=============================================
 argmax <- function(x, y, w=1, ...) {
@@ -57,8 +59,8 @@ printout_NA_table <- function(outfname) {
 
 # Plot smoothed peaks
 #=============================================
-plot_modes <- function() {
-  smooth_plotfile <- paste(outdir, f, ".smoothed.jpg", sep = "")
+plot_modes <- function(plot_outdir) {
+  smooth_plotfile <- paste(plot_outdir, "/", f, ".smoothed.jpg", sep = "")
   jpeg(file=smooth_plotfile) 
   plot(locs, scores, cex=0.75, col="Gray", main=paste("w = ", w, ", span = ", span, sep="")) 
   lines(locs, peaks$y.hat,  lwd=2) 
@@ -70,7 +72,7 @@ plot_modes <- function() {
 
 # Plot ROE peaks
 #=============================================
-plot_roe <- function() {
+plot_roe <- function(plot_outdir) {
   left <- locs[leftind]
   right <- locs[rightind]
   peak_mode_loc <- locs[peak_mod_index]
@@ -94,7 +96,7 @@ plot_roe <- function() {
   # Plot ROEs
   subT <- paste("Interval = [", toString(format(left, digits=2)), ",", toString(format(right, digits=2)), "]")
   mainT <- paste(pwmName, subT, sep="\n")
-  plot_filename <- paste(outdir, f, ".jpg", sep="")
+  plot_filename <- paste(plot_outdir, "/", f, ".jpg", sep="")
   jpeg(file=plot_filename)
   par(mfrow=c(2,1))
   plot(locs, scores, main=mainT, xlab="locs", ylab="scores")
@@ -165,10 +167,22 @@ get_max_peak <- function(above_avg_mod_idxes, extreme_max_idxs) {
   return(max_idx)
 }
 
-datadir <- "~/Downloads/test/dists_all///"
-outdir <- "~/Downloads/test/plots/"
+args <- commandArgs(trailingOnly = TRUE)
 
-flist <- list.files(datadir)
+if (length(args) < 4 ) {
+        print("Usage: ./find_roe_tables.R [input_dists_dir] [outdir] [pwm_labels (sorted as same aspwm.mat file)] [table_outbase]\n")
+        quit("no", 1)
+}
+
+input_dist_dir <- args[1]
+outdir <- args[2]
+pwm_labels <- args[3]
+table_outbase <- args[4]
+
+strands <- c("FWD", "REV")
+
+#datadir <- "~/Downloads/test/dists_all///"
+#outdir <- "~/Downloads/test/plots/"
 
 # Init default parameters 
 w <- 100 # win length for signal mode finder
@@ -179,20 +193,28 @@ peak_mode_loc <- -6000
 max_neighbor_dist <- 500
 
 #------------ Start Main Loop Over all dists --------------
+if ( !dir.exists(paths=outdir) ) {
+	dir.create(path = outdir)
+}
 
+for(strand in strands) {
+  indir <- paste(input_dist_dir, "/", strand, "/", sep = "") 
+  flist <- list.files(indir)
+  plot_outdir <- paste(outdir,  "/", strand, sep = "")
+  dir.create(file.path(outdir, strand ), showWarnings = FALSE)
 for (f in flist) {
   #f <- flist[1]
-  print(f)
-  dist_tbl <- read.table(paste(datadir, f, sep = ""), header = F)
+  dist_tbl <- read.table(paste(indir, f, sep = ""), header = F)
+  print(paste(indir, f, sep = ""))
   locs <- dist_tbl[,1] 
   scores <- dist_tbl[,2] 
   maxdist <- length(locs)/2 
-  outfname <- paste(outdir, f, ".table", sep = "")
+  outfname <- paste(outdir, f, ".", strand, ".table", sep = "")
 
   
   # find the modes and plot them
   peaks <- argmax(locs, scores, w=w, span=span)
-  plot_modes()
+  plot_modes(plot_outdir)
   
   ## process found peaks
   ##########################
@@ -207,7 +229,7 @@ for (f in flist) {
   smooth_scores <- peaks$y.hat
   
   # Don't consider peaks beyond 1.5kb frim TSS
-  mod_idxes = mod_idxes[which(locs[mod_idxes] > -1500 & locs[mod_idxes] < 1500)]
+  mod_idxes = mod_idxes[which(locs[mod_idxes] > -1000 & locs[mod_idxes] < 1000)]
   
   # Pre filter peaks that are almost equal to each other
   #if (!is_roe_exist(mod_idxes)) {
@@ -301,10 +323,25 @@ for (f in flist) {
   } 
   
   ## print final ROE
-  plot_roe()
+  plot_roe(plot_outdir)
+}
+}
+#------------ End of the loop #------------------------ 
+
+# ------ Write out final roe table --------#
+pwms <- read.table(pwm_labels, header = F)
+for (strand in strands) {
+	all_tables <- data.frame(MaxPeakLoc=c(), HalfWidth=c(), Left=c(), Right=c())
+	for (pname in pwms$V1) {
+		table_file <- paste(outdir, "/", pname, ".dist.", strand, ".table", sep = "")
+		df <- read.table(table_file)
+		all_tables <- rbind(all_tables, df)
+	}
+	table_outfile <- paste(table_outbase, ".", strand, ".table", sep = "")
+	print(table_outfile)
+	write.table(file=table_outfile, all_tables, row.names = T, col.names = T, quote = F, sep = "\t")
 }
 
-#------------ End of the loop #------------------------ 
 
 
 
