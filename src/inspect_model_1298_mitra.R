@@ -31,6 +31,8 @@ if(offline == TRUE) {
 	feature_info <- args[1]
 	scale_file <- args[2]
 	outdir <- args[3]
+	low <- args[4]
+	high <- args[5]
 	load(feature_info)
 	load(scale_file)	
 }
@@ -138,8 +140,8 @@ cl <- makeCluster(no_cores)
 root_index <- nrow(root_specific)
 leaf_index <- nrow(leaf_specific)
 list_of_pairs = list()
-for(i in 1:2) {
-  for (j in 1:3) {
+for(i in low:high) {
+  for (j in 1:leaf_index) {
     l <- list(i=i, j=j)
     list_of_pairs <- c(list_of_pairs,list(l))
   }
@@ -150,7 +152,7 @@ result <- parLapply(cl, list_of_pairs, compute_diff)
 all <- as.data.frame(matrix(unlist(result), byrow = T, ncol = 5))
 colnames(all) <- c("root_index", "leaf_index", "cutoff", "num_diffs", "cor_coef")
 
-table_outfile <- paste(outdir, "/table_out.txt", sep = "")
+table_outfile <- paste(outdir, "/", low, "_", high,  "_table_out.txt", sep = "")
 write.table(all, file = table_outfile, row.names = F, quote = F, sep = "\t")
 
 #print(result)

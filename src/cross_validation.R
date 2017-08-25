@@ -332,8 +332,8 @@ perf_out <- paste(outdir, "/", model_type, "_heldoutTest_performance.txt", sep =
 perf_df <- data.frame(auroc = final_res$auroc, auprc = final_res$auprc)
 write.table(perf_df, file = perf_out, sep = "\t", row.names = F, quote = F)
 
-model_file <- paste(outdir, "/", model_type, "_model.rdat", sep = "")
-save(final_res, file = model_file)
+#model_file <- paste(outdir, "/", model_type, "_model.rdat", sep = "")
+#save(final_res, file = model_file)
 #print("model saved at: ", model_file, sep = "")
 
 ### Test calls
