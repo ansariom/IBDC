@@ -76,14 +76,14 @@ diff$Accession <- NULL
 #####################################
 
 all_features_wide <- extract(all_features_wide, remove = FALSE,
-                             tss_name, c("gene_id", "chr", "loc", "offset?"), 
-                             regex = "([^_]+)_([^_]+)_([^_]+)_([^_]+)")
+                             tss_name, c("gene_id", "chr", "loc", "strand", "offset?"), 
+                             regex = "([^_]+)_([^_]+)_([^_]+)_([^_]+)_([^_]+)")
 
 
 diff_all$gene_id <- diff_all$Accession
 diff_all$Accession <- NULL
-all_tss_diffs_wide <- merge(diff_all, all_features_wide, by = "gene_id")
-save(all_tss_diffs_wide, file = all_TSS_diff_outfile)
+#all_tss_diffs_wide <- merge(diff_all, all_features_wide, by = "gene_id")
+#save(all_tss_diffs_wide, file = all_TSS_diff_outfile)
 
 diff_all <- NULL
 all_tss_diffs_wide <- NULL

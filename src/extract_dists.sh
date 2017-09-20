@@ -1,7 +1,7 @@
 #!/bin/bash
 
 in_pwms=$1
-scores_dir=$2
+scores_dir=$2 # cumulitive scores that are gathered from parallel exe
 outdir=$3
 
 fwd_outdir=$outdir/FWD
@@ -17,7 +17,7 @@ fi
 
 # get the pwm labels into array
 all_pwms_file=pwm_labels.tmp.txt
-#grep '>' $in_pwms  | cut -c 3- > $all_pwms_file
+grep '>' $in_pwms  | cut -c 3- > $all_pwms_file
 mapfile -t pwm_names < $all_pwms_file
 
 tmpdir=`mktemp -d --tmpdir=.`
