@@ -3,7 +3,7 @@ library(tidyr)
 library(dplyr)
 
 args <- commandArgs(trailingOnly = TRUE)
-if(length(args) != 10) {
+if(length(args) != 11) {
         print("This script is meant to join 4 very specifically-formatted 'feature' files into a single file for modeling and analysis.")
         print("It uses maybe like... 25G of RAM.")
         print("")
@@ -22,12 +22,16 @@ oc_leaf_overall_file <- args[7]
 oc_root_overall_file <- args[8]
 diff_file <- args[9]
 output_file <- args[10]
+all_TSS_diff_outfile <- args[11]
 
 #####################################
 ### Make the diff table nice
 #####################################
 
 diff <- read.table(diff_file, header = TRUE, stringsAsFactors = FALSE)
+
+# A copy of complete features
+diff_all <- diff
 
 # Mitra: lots of NAs in df > omit them
 diff <- na.omit(diff)
@@ -213,7 +217,14 @@ gc()
 
 save(all_features_diffs_wide, file = output_file)
 
+diff_all$gene_id <- diff_all$Accession
+diff_all$Accession <- NULL
+all_tss_diffs_wide <- merge(diff_all, all_features_wide, by = "gene_id")
+save(all_tss_diffs_wide, file = all_TSS_diff_outfile)
 
+diff_all <- NULL
+all_tss_diffs_wide <- NULL
+gc()
 
 
 

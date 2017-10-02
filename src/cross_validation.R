@@ -214,7 +214,9 @@ model_type = args[5]
 save_model <- FALSE
 
 # chosen by fair die roll, gauranteed to be random
-set.seed(1298)
+#set.seed(1298)
+set.seed(7621)
+#set.seed(2317)
 # load the features and differential expression data
 # into all_features_diffs_wide
 load(input_features)
@@ -230,8 +232,12 @@ if (model_type == "tile_only") {
   all_features_diffs_wide <- all_features_diffs_wide[, (grepl("_OC_", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]
   all_features_diffs_wide <- cbind(missing_cols, all_features_diffs_wide)
 } else if (model_type == "tfbs_only" ) {
-  all_features_diffs_wide <- all_features_diffs_wide[, (!grepl("_OC_", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]
-} 
+  all_features_diffs_wide <- all_features_diffs_wide[, (!grepl("OC_P_", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]
+} else if (model_type == "roc_only") {
+  all_features_diffs_wide <- all_features_diffs_wide[, !grepl("_OVERALL", colnames(all_features_diffs_wide)) ]
+} else if ( model_type == "roc_overall") {
+  all_features_diffs_wide <- all_features_diffs_wide[, !grepl("_100", colnames(all_features_diffs_wide)) ]
+}
 
 # set rownames to tss names
 rownames(all_features_diffs_wide) <- all_features_diffs_wide$tss_name
@@ -248,7 +254,7 @@ print(table(classed_features_diffs_wide$class))
 # strip out the differential expression stuff
 diffs_colnames <- c("gene_id", "pval", "qval", "b", "se_b", "mean_obs", "var_obs", 
                     "tech_var", "sigma_sq", "smooth_sigma_sq", "final_sigma_sq", 
-                    "tss_name", "chr", "loc", "offset?")
+                    "tss_name", "chr", "loc", "strand", "offset?")
 
 # differential expression data
 classed_diffs_info <- classed_features_diffs_wide[, diffs_colnames]
@@ -271,7 +277,7 @@ lapply <- function(...) {parLapply(cl, ...)}
 
 # we'll try a bunch of different params
 #possible_params <- as.list(10^seq(-6,-1,0.2))
-possible_params <- as.list(seq(0.0001, 0.003, 0.0002))
+possible_params <- as.list(seq(0.0001, 0.004, 0.0002))
 
 print("trying params:")
 print(unlist(possible_params))

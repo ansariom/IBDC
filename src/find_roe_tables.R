@@ -209,7 +209,7 @@ for (f in flist) {
   locs <- dist_tbl[,1] 
   scores <- dist_tbl[,2] 
   maxdist <- length(locs)/2 
-  outfname <- paste(outdir, f, ".", strand, ".table", sep = "")
+  outfname <- paste(outdir, "/", f, ".", strand, ".table", sep = "")
 
   
   # find the modes and plot them
