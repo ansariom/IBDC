@@ -19,7 +19,7 @@ add_class <- function(input, qval_thresh, fold_thresh) {
 ####################################
 args <- commandArgs(trailingOnly = TRUE)
 
-if(length(args) < 5) {
+if(length(args) < 4) {
   print("./prepare_data_for_classification.R [all_features.rdat] [tile_only|roe_only|tile_roe] [features_outfile] [diffs_outfile]")
   quit()
 }
