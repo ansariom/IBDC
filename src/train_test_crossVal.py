@@ -12,7 +12,7 @@ from sklearn.metrics import average_precision_score
 from os.path import os
 import pickle
 
-max_param = 0.0002
+max_param = 0.0005
 all_features = []
 test_all_features = []
 train_all_labels = []
@@ -84,7 +84,7 @@ def split_train_cross_val(nfold):
             auroc, auprc = linear_model_simple(scaled_train_features, train_fold_labels, scaled_test_features, test_fold_labels, param)
             fold_results.append(np.array([fold, param, auroc, auprc]))
             f.write(str(fold) + "\t" + str(auroc) + "\t" + str(auprc) + "\n")
-            print(fold, " : ", param , " ,AUC = " , auroc, " , prc= ", auprc)
+#             print(fold, " : ", param , " ,AUC = " , auroc, " , prc= ", auprc)
     f.close()      
     
     'Find best in folds and get the mean of param'
@@ -113,7 +113,7 @@ def split_train_cross_val(nfold):
     colors = {0:'red', 1:'blue', 2:'green', 3:'black', 4:'orange'}
     grouped = df.groupby('fold')
     for key, group in grouped:
-        group.plot(ax=ax, kind='line', x='param', y='auc', label=key, color=colors[key], xlim = [0, 0.0003], ylim = [0.5, 1])
+        group.plot(ax=ax, kind='line', x='param', y='auc', label=key, color=colors[key], xlim = [0, 0.0005], ylim = [0.4, 1])
     plt.savefig(plot_file, dpi=300)
     
     return mean_param
@@ -205,30 +205,31 @@ if __name__ == "__main__":
             all_features.append(np.asarray(row))
         all_features = np.asanyarray(all_features)
 
-    #seed = np.random.randint(12000)
-    seed = 3467
-    outdir = argsDict["outdir"] + "/" + str(seed)
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
+    seeds = np.random.randint(12000)
+    #seed = 3467
+    for seed in iter(seeds):
+        outdir = argsDict["outdir"] + "/" + str(seed)
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+            
+        # split data into 80% train 20% heldout test
+        split_data_train_test(seed)
         
-    # split data into 80% train 20% heldout test
-    split_data_train_test(seed)
-    
-    # cross validation and getting mean of best parameters
-    mean_param = split_train_cross_val(5)
-    
-    # normalize whole train set
-#     scaler = preprocessing.StandardScaler(with_mean=True, with_std=False).fit(train_all_features)
-    scaler = preprocessing.MinMaxScaler().fit(train_all_features)
-    scaled_train_all = scaler.transform(train_all_features)
-    scaled_test_all = scaler.transform(test_all_features)
-    auroc, auprc = linear_model_simple(train_all_features, train_all_labels, test_all_features, test_all_labels, mean_param, save_model = True)
-    
-    test_outfile = outdir + "/" + argsDict["model_type"] + "_heldout_test.txt"
-    f = open(test_outfile, "wt")
-    f.write("auroc\tauprc\n")
-    f.write(str(auroc) + "\t" + str(auprc) )
-    f.close();
-    print("heldout test : ", auroc, " prc = ", auprc)
+        # cross validation and getting mean of best parameters
+        mean_param = split_train_cross_val(5)
+        
+        # normalize whole train set
+    #     scaler = preprocessing.StandardScaler(with_mean=True, with_std=False).fit(train_all_features)
+        scaler = preprocessing.MinMaxScaler().fit(train_all_features)
+        scaled_train_all = scaler.transform(train_all_features)
+        scaled_test_all = scaler.transform(test_all_features)
+        auroc, auprc = linear_model_simple(train_all_features, train_all_labels, test_all_features, test_all_labels, mean_param, save_model = True)
+        
+        test_outfile = outdir + "/" + argsDict["model_type"] + "_heldout_test.txt"
+        f = open(test_outfile, "wt")
+        f.write("auroc\tauprc\n")
+        f.write(str(auroc) + "\t" + str(auprc) )
+        f.close();
+        print("heldout test : ", auroc, " prc = ", auprc)
     
     
