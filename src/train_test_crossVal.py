@@ -77,13 +77,14 @@ def split_train_cross_val(nfold):
         
         # normalize the data
 #        scaler = preprocessing.MinMaxScaler().fit(train_fold_features)
-        scaler = preprocessing.StandardScaler(axis = 0, with_mean=True, with_std=True).fit(train_fold_features)
+        #scaler = preprocessing.StandardScaler(with_mean=True, with_std=True).fit(train_fold_features)
+        scaler = preprocessing.RobustScaler().fit(train_fold_features)
         scaled_train_features = scaler.transform(train_fold_features)
         scaled_test_features = scaler.transform(test_fold_features)
         for param in iter(weight_decays):
             auroc, auprc = linear_model_simple(scaled_train_features, train_fold_labels, scaled_test_features, test_fold_labels, param)
             fold_results.append(np.array([fold, param, auroc, auprc]))
-            f.write(str(fold) + "\t" + str(auroc) + "\t" + str(auprc) + "\n")
+            f.write(str(fold) + "\t" + param + "\t" + str(auroc) + "\t" + str(auprc) + "\n")
 #             print(fold, " : ", param , " ,AUC = " , auroc, " , prc= ", auprc)
     f.close()      
     
@@ -220,7 +221,8 @@ if __name__ == "__main__":
         mean_param = split_train_cross_val(5)
         
         # normalize whole train set
-    	scaler = preprocessing.StandardScaler(axis = 0, with_mean=True, with_std=True).fit(train_all_features)
+    	#scaler = preprocessing.StandardScaler(with_mean=True, with_std=True).fit(train_all_features)
+        scaler = preprocessing.RobustScaler().fit(train_all_features)
         #scaler = preprocessing.MinMaxScaler().fit(train_all_features)
         scaled_train_all = scaler.transform(train_all_features)
         scaled_test_all = scaler.transform(test_all_features)
