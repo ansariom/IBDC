@@ -76,8 +76,8 @@ def split_train_cross_val(nfold):
         train_fold_labels = train_fold_labels.reshape(len(train_fold_labels), 1)
         
         # normalize the data
-        scaler = preprocessing.MinMaxScaler().fit(train_fold_features)
-#         scaler = preprocessing.StandardScaler(with_mean=True, with_std=False).fit(train_fold_features)
+#        scaler = preprocessing.MinMaxScaler().fit(train_fold_features)
+        scaler = preprocessing.StandardScaler(axis = 0, with_mean=True, with_std=True).fit(train_fold_features)
         scaled_train_features = scaler.transform(train_fold_features)
         scaled_test_features = scaler.transform(test_fold_features)
         for param in iter(weight_decays):
@@ -205,7 +205,8 @@ if __name__ == "__main__":
             all_features.append(np.asarray(row))
         all_features = np.asanyarray(all_features)
 
-    seeds = np.random.randint(12000)
+    #seeds = np.random.randint(12000)
+    seeds = [10657]
     #seed = 3467
     for seed in iter(seeds):
         outdir = argsDict["outdir"] + "/" + str(seed)
@@ -219,11 +220,11 @@ if __name__ == "__main__":
         mean_param = split_train_cross_val(5)
         
         # normalize whole train set
-    #     scaler = preprocessing.StandardScaler(with_mean=True, with_std=False).fit(train_all_features)
-        scaler = preprocessing.MinMaxScaler().fit(train_all_features)
+    	scaler = preprocessing.StandardScaler(axis = 0, with_mean=True, with_std=True).fit(train_all_features)
+        #scaler = preprocessing.MinMaxScaler().fit(train_all_features)
         scaled_train_all = scaler.transform(train_all_features)
         scaled_test_all = scaler.transform(test_all_features)
-        auroc, auprc = linear_model_simple(train_all_features, train_all_labels, test_all_features, test_all_labels, mean_param, save_model = True)
+        auroc, auprc = linear_model_simple(scaled_train_all, train_all_labels, scaled_test_all, test_all_labels, mean_param, save_model = True)
         
         test_outfile = outdir + "/" + argsDict["model_type"] + "_heldout_test.txt"
         f = open(test_outfile, "wt")
