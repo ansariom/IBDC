@@ -16,7 +16,7 @@ from sklearn import preprocessing
 '   run saved model on given set of features  '
 '================================================'
 def run_model(x_test, x_test_tss_id, outfile, model_file_name):
-    trained_model = pickle.load(open(model_file_name, 'rb'))
+    trained_model = pickle.load(open(model_file_name, 'r'))
     result = trained_model.predict_proba(x_test)
     res_records = np.rec.fromarrays((x_test_tss_id, result), names= ('feature', 'prob0', 'prob1'))
     df = pd.DataFrame.from_records(res_records)
@@ -43,7 +43,8 @@ if __name__ == '__main__':
     x_test = np.asanyarray(x_test)
 
     # 1- compute all_features_scaled using saved train_set 
-    x_test_features = x_test[1:-1]
+    x_test_features = np.asanyarray(x_test[:,1:-1], np.float32)
+    print(x_test_features.shape)
     x_test_tss_ids = x_test[:,0]
     x_train = np.load(train_set)
     scaler = preprocessing.StandardScaler(with_mean=True, with_std=True).fit(x_train)
