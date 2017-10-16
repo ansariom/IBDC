@@ -11,6 +11,7 @@ import pandas as pd
 from sklearn.metrics import average_precision_score
 from os.path import os
 import pickle
+from __builtin__ import str
 
 max_param = 0.0005
 all_features = []
@@ -84,7 +85,7 @@ def split_train_cross_val(nfold):
         for param in iter(weight_decays):
             auroc, auprc = linear_model_simple(scaled_train_features, train_fold_labels, scaled_test_features, test_fold_labels, param)
             fold_results.append(np.array([fold, param, auroc, auprc]))
-            f.write(str(fold) + "\t" + param + "\t" + str(auroc) + "\t" + str(auprc) + "\n")
+            f.write(str(fold) + "\t" + str(param) + "\t" + str(auroc) + "\t" + str(auprc) + "\n")
 #             print(fold, " : ", param , " ,AUC = " , auroc, " , prc= ", auprc)
     f.close()      
     
@@ -206,8 +207,8 @@ if __name__ == "__main__":
             all_features.append(np.asarray(row))
         all_features = np.asanyarray(all_features)
 
-    #seeds = np.random.randint(12000)
-    seeds = [10657]
+    seeds = np.random.randint(12000, size = 3)
+    #seeds = [10657]
     #seed = 3467
     for seed in iter(seeds):
         outdir = argsDict["outdir"] + "/" + str(seed)
