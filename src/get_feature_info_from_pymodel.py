@@ -24,10 +24,10 @@ def run_model(x_test, x_test_tss_id, outfile, model_file_name):
 
 if __name__ == '__main__':
     args = sys.argv[1:]
-    model_file = args[1] # saved model
-    train_set = args[2]  # original training set x_traind.npy
-    all_features_csv = args[3]    # features_classed.csv
-    outfile = args[4]
+    model_file = args[0] # saved model
+    train_set = args[1]  # original training set x_traind.npy
+    all_features_csv = args[2]    # features_classed.csv
+    outfile = args[3]
     
     # read input features, 1st column is tss_id and last column is class label
     x_test = []
