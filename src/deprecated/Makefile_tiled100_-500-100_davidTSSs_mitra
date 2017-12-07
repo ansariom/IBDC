@@ -1,0 +1,391 @@
+### The same parameters as Shawn's last run but fixed problems:
+## 1- OC-overlap computation now is faster (15 minutes for 200M records) and bugs corrected
+## 2- TSSs falling into <250 didn't have TranscriptID (NA was set before) as a result many peaks where absent from analysis
+## 3- Duplicate peaks are removed and OC_OVERALL is fixed now
+## Merge_features.R is faster now (2 hours before) because the NAs are removed from diff_expr and genes with >abs(4) fold change are present now
+
+datadir = db
+fastq_dir = $(datadir)/raw_data
+
+bowtie_db = $(datadir)/tair10/db
+gff = $(datadir)/tair10/TAIR10_GFF3_genes.gff
+genome = $(datadir)/tair10/genome.fas
+#pwm = $(datadir)/tair10/PEAT_core_PWMs.mat
+pwm = $(datadir)/tair10/peat_core_plus_hughes.mat
+
+threshold_oc = 4
+
+input_tss_fastq_leaf = $(fastq_dir)/ath_tss_leaf.fastq
+input_tss_fastq_root = $(fastq_dir)/ath_tss_root.fastq
+input_oc_fastq_leaf = $(fastq_dir)/ath_leaf_oc_12hr_20bp.fastq
+input_oc_fastq_root = $(fastq_dir)/ath_root_oc_12hr_20bp.fastq
+input_expr_diff = $(datadir)/diff_exp_results.txt
+
+pseudoCounts = 0.01
+up_oc = 0
+down_oc = 100
+
+nfolds = 5
+
+tss_region_for_oc_overall = $(prefix)/tss_up$(up_oc)_down$(down_oc)_region.bed
+
+prefix = ibdc_small_test_1
+
+queues = megraw,bpp
+premadefiles = $(datadir)/alignments
+
+all: $(prefix)/all_features_diffs_wide.rdat
+	echo DEPS all: $(prefix)/all_features_diffs_wide.rdat
+
+clean: 
+	rm -rf $(prefix)
+
+train: train_with_roe train_with_tile train_both
+
+train_with_roe:
+	echo DEPS $*all_features_diffs_wide.rdat
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 roe_only |\
+                SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_roe
+
+train_with_tile:
+	echo DEPS $*all_features_diffs_wide.rdat
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 tile_only |\
+                SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_tile
+
+train_both:
+	echo DEPS $*all_features_diffs_wide.rdat
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 20 tile_roe |\
+		SGE_Array -P 20 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test_all
+
+train_main: %all_features_diffs_wide.rdat
+	echo software/cross_validation.R $(prefix)/all_features_diffs_wide.rdat $(nfolds) $(prefix) 40 roe_only |\
+                SGE_Array -P 40 -q $(queues) -m 200G -r $(prefix)/j1_crossval_train_test --hold-names $(prefix)/j1_merge_all_features
+
+skip_making_bams = 1
+
+# SET 1
+##################################
+###
+### Generating TSS features - Leaf
+###
+##################################
+
+%capfiltered_leaf.fastq: $(input_tss_fastq_leaf)
+ifeq ($(skip_making_bams),0)
+	echo DEPS $*capfiltered_leaf.fastq: $(input_tss_fastq_leaf)
+	mkdir -p $(prefix)
+	echo software/CapFilter.pl seq --out $(prefix)/capfiltered_leaf.fastq $(input_tss_fastq_leaf)  | \
+		SGE_Array -q $(queues) -m 1G -r $(prefix)/j1_capfilter_seq_logs_leaf
+else
+	echo DEPS $*capfiltered_leaf.fastq:
+endif
+
+
+%aligned_leaf.bam: %capfiltered_leaf.fastq
+ifeq ($(skip_making_bams),1)
+	echo DEPS $*aligned_leaf.bam: 
+	mkdir -p $(prefix)
+	echo ln -s ../$(premadefiles)/aligned_leaf.bam $(prefix)/aligned_leaf.bam | \
+		SGE_Array -P 1 -q $(queues) -m 1G -r $(prefix)/j2_bowtie_logs_leaf 
+else
+	echo DEPS $*aligned_leaf.bam: $*capfiltered_leaf.fastq $(bowtie_db).1.ebwt	
+	echo bowtie -p 10 -v 0 -m 1 -a --best --strata --sam-no-qname-trunc -S $(bowtie_db) $(prefix)/capfiltered_leaf.fastq \| software/remove_no_hits.pl \| software/samtools sort -T \$$TMPDIR/tempfiles -O bam \> $(prefix)/aligned_leaf.bam | \
+		SGE_Array -P 10 -q $(queues) -m 40G -r $(prefix)/j2_bowtie_logs_leaf --hold_names $(prefix)/j1_capfilter_seq_logs_leaf
+endif
+
+
+%aligned_leaf.peaks: %aligned_leaf.bam
+	echo DEPS $*aligned_leaf.peaks: $*aligned_leaf.bam
+	echo java -Xmx9G -jar software/DavidPeakCallerV1.1/GenerateTSSsFromBAM.jar $(prefix)/aligned_leaf.bam $(prefix)/aligned_leaf.peaks 1\; rm -f Chr*.txt | \
+		SGE_Array -q $(queues) -m 20G -r $(prefix)/j3_peaks_logs_leaf --hold_names $(prefix)/j2_bowtie_logs_leaf
+
+
+%aligned.peaks_leaf.annotated: %aligned_leaf.peaks
+	echo DEPS $*aligned.peaks_leaf.annotated: $*aligned_leaf.peaks
+	echo software/annotate_TSS_peaks.pl -p -G $(gff) $(prefix)/aligned_leaf.peaks \> $(prefix)/aligned.peaks_leaf.annotated | \
+		SGE_Array -q $(queues) -m 5G -r $(prefix)/j4_annotate_peaks_logs_leaf --hold_names $(prefix)/j3_peaks_logs_leaf
+
+%aligned.peaks.annotated_leaf.capped: %aligned.peaks_leaf.annotated
+	echo DEPS $*aligned.peaks.annotated_leaf.capped: $*aligned.peaks_leaf.annotated
+	echo software/CapFilter.pl peak --sorted --cutoff 0 --out $(prefix)/aligned.peaks.annotated_leaf.capped $(prefix)/aligned.peaks_leaf.annotated $(prefix)/aligned_leaf.bam $(genome) | \
+		SGE_Array -q $(queues) -m 5G -r $(prefix)/j5_capfilter_cap_logs_leaf --hold_names $(prefix)/j4_annotate_peaks_logs_leaf
+
+
+# Filter to top 5400 peaks per tissue 
+#%aligned.peaks.annotated.capped_leaf.filtered: %aligned.peaks.annotated_leaf.capped
+#	echo "cat $(prefix)/aligned.peaks.annotated_leaf.capped | awk -F ',' '{if(NR == 1) {print \$$0} else if( \$$NF > 50 ) { print \$$0 | \"sort -t, -k5,5nr\"} }' | head -n 5400 > $(prefix)/aligned.peaks.annotated.capped_leaf.filtered" |\
+#		SGE_Array -q $(queues) -m 1G -r $(prefix)/j6_filter_by_capped_logs_leaf --hold_names $(prefix)/j5_capfilter_cap_logs_leaf
+# (or not)
+
+%aligned.peaks.annotated.capped_leaf.filtered: %aligned.peaks.annotated_leaf.capped
+	echo DEPS $*aligned.peaks.annotated.capped_leaf.filtered: $*aligned.peaks.annotated_leaf.capped
+	echo "cat $(prefix)/aligned.peaks.annotated_leaf.capped | awk -F ',' '{if(NR == 1) {print \$$0} else if( \$$NF > 50 ) { print \$$0 | \"sort -t, -k5,5nr\"} }' | awk -F ',' '{if(NR == 1) {print \$$0} else if(\$$9 == \"tss\" || \$$9 == \"<250\" || \$$9 == \"<500\" || \$$9 == \"5'\''utr\") {print \$$0}}' | awk -F ',' '{if(NR == 1) {print \$$0} else if(\$$10 == \"NA\") {print \$$1\",\"\$$2\",\"\$$3\",\"\$$4\",\"\$$5\",\"\$$6\",\"\$$7\",\"\$$8\",\"\$$9\",\"\$$11\".1\"\",\"\$$11\",\"\$$12\",\"\$$13} else {print \$$0} }'  > $(prefix)/aligned.peaks.annotated.capped_leaf.filtered" |\
+		SGE_Array -q $(queues) -m 1G -r $(prefix)/j6_filter_by_capped_logs_leaf --hold_names $(prefix)/j5_capfilter_cap_logs_leaf
+
+
+# SET 2
+##################################
+###
+### Generating TSS features - Root
+###
+##################################
+
+
+%capfiltered_root.fastq: $(input_tss_fastq_root)
+ifeq ($(skip_making_bams),0)
+	echo DEPS $*capfiltered_root.fastq: $(input_tss_fastq_root)
+	mkdir -p $(prefix)
+	echo software/CapFilter.pl seq --out $(prefix)/capfiltered_root.fastq $(input_tss_fastq_root)  | \
+		SGE_Array -q $(queues) -m 1G -r $(prefix)/j1_capfilter_seq_logs_root
+else
+	echo DEPS $*capfiltered_root.fastq:
+endif
+
+
+%aligned_root.bam: %capfiltered_root.fastq
+ifeq ($(skip_making_bams),1)
+	echo DEPS $*aligned_root.bam:
+	mkdir -p $(prefix)
+	echo ln -s ../$(premadefiles)/aligned_root.bam $(prefix)/aligned_root.bam | \
+		SGE_Array -P 1 -q $(queues) -m 1G -r $(prefix)/j2_bowtie_logs_root 
+else
+	echo DEPS $*aligned_root.bam: $*capfiltered_root.fastq $(bowtie_db).1.ebwt
+	echo bowtie -p 40 -v 0 -m 1 -a --best --strata --sam-no-qname-trunc -S $(bowtie_db) $(prefix)/capfiltered_root.fastq \| software/remove_no_hits.pl \| software/samtools sort -T \$$TMPDIR/tempfiles -O bam \> $(prefix)/aligned_root.bam | \
+		SGE_Array -P 10 -q $(queues) -m 40G -r $(prefix)/j2_bowtie_logs_root --hold_names $(prefix)/j1_capfilter_seq_logs_root
+endif
+
+
+%aligned_root.peaks: %aligned_root.bam
+	echo DEPS $*aligned_root.peaks: $*aligned_root.bam
+	echo java -Xmx9G -jar software/DavidPeakCallerV1.1/GenerateTSSsFromBAM.jar $(prefix)/aligned_root.bam $(prefix)/aligned_root.peaks 1\; rm -f Chr*.txt | \
+		SGE_Array -q $(queues) -m 20G -r $(prefix)/j3_peaks_logs_root --hold_names $(prefix)/j2_bowtie_logs_root
+
+
+%aligned.peaks_root.annotated: %aligned_root.peaks
+	echo DEPS $*aligned.peaks_root.annotated: $*aligned_root.peaks
+	echo software/annotate_TSS_peaks.pl -p -G $(gff) $(prefix)/aligned_root.peaks \> $(prefix)/aligned.peaks_root.annotated | \
+		SGE_Array -q $(queues) -m 5G -r $(prefix)/j4_annotate_peaks_logs_root --hold_names $(prefix)/j3_peaks_logs_root
+
+
+%aligned.peaks.annotated_root.capped: %aligned.peaks_root.annotated
+	echo DEPS $*aligned.peaks.annotated_root.capped: $*aligned.peaks_root.annotated
+	echo software/CapFilter.pl peak --sorted --cutoff 0 --out $(prefix)/aligned.peaks.annotated_root.capped $(prefix)/aligned.peaks_root.annotated $(prefix)/aligned_root.bam $(genome) | \
+		SGE_Array -q $(queues) -m 5G -r $(prefix)/j5_capfilter_cap_logs_root --hold_names $(prefix)/j4_annotate_peaks_logs_root
+
+# Filter to top 5400 peaks per tissue
+#%aligned.peaks.annotated.capped_root.filtered: %aligned.peaks.annotated_root.capped
+#	echo "cat $(prefix)/aligned.peaks.annotated_root.capped | awk -F ',' '{if(NR == 1) {print \$$0} else if( \$$NF > 50) {print \$$0 | \"sort -t, -k5,5nr\"}}' | head -n 5400 > $(prefix)/aligned.peaks.annotated.capped_root.filtered" |\
+#		SGE_Array -q $(queues) -m 1G -r $(prefix)/j6_filter_by_capped_logs_root --hold_names $(prefix)/j5_capfilter_cap_logs_root
+# (or not)
+
+%aligned.peaks.annotated.capped_root.filtered: %aligned.peaks.annotated_root.capped
+	echo DEPS $*aligned.peaks.annotated.capped_root.filtered: $*aligned.peaks.annotated_root.capped
+	echo "cat $(prefix)/aligned.peaks.annotated_root.capped | awk -F ',' '{if(NR == 1) {print \$$0} else if( \$$NF > 50) {print \$$0 | \"sort -t, -k5,5nr\"}}' | awk -F ',' '{if(NR == 1) {print \$$0} else if( \$$9 == \"tss\" || \$$9 == \"<250\" || \$$9 == \"<500\" || \$$9 == \"5'\''utr\") {print \$$0}}' | awk -F ',' '{if(NR == 1) {print \$$0} else if(\$$10 == \"NA\") {print \$$1\",\"\$$2\",\"\$$3\",\"\$$4\",\"\$$5\",\"\$$6\",\"\$$7\",\"\$$8\",\"\$$9\",\"\$$11\".1\"\",\"\$$11\",\"\$$12\",\"\$$13 } else {print \$$0} }' > $(prefix)/aligned.peaks.annotated.capped_root.filtered" |\
+		SGE_Array -q $(queues) -m 1G -r $(prefix)/j6_filter_by_capped_logs_root --hold_names $(prefix)/j5_capfilter_cap_logs_root
+
+
+# SET 3
+################################
+###
+### Generating Regions of Interest
+###
+################################
+
+
+#combine leaf and root tss filtered peaks
+# NOTE this copies the header from each :(
+%aligned.peaks.annotated.capped.filtered: %aligned.peaks.annotated.capped_leaf.filtered %aligned.peaks.annotated.capped_root.filtered
+	echo DEPS $*aligned.peaks.annotated.capped.filtered: $*aligned.peaks.annotated.capped_leaf.filtered $*aligned.peaks.annotated.capped_root.filtered
+	echo "cat $(prefix)/aligned.peaks.annotated.capped_leaf.filtered <(tail -n +2 $(prefix)/aligned.peaks.annotated.capped_root.filtered) > $(prefix)/aligned.peaks.annotated.capped.filtered" | \
+		SGE_Array -q $(queues) -m 1G -r $(prefix)/j7aa_merge_peaks_logs --hold_names $(prefix)/j6_filter_by_capped_logs_leaf,$(prefix)/j6_filter_by_capped_logs_root
+
+# First: pull regions 
+%peaks_3000_region.fa: %aligned.peaks.annotated.capped.filtered
+	echo DEPS $*peaks_3000_region.fa: $*aligned.peaks.annotated.capped.filtered
+	echo software/get_seqs.pl $(prefix)/aligned.peaks.annotated.capped.filtered 3000 3000 $(genome) \| software/dedup_fasta.sh \> $(prefix)/peaks_3000_region.fa |\
+		SGE_Array -q $(queues) -m 10G -r $(prefix)/j7a_peaks_wide_region_logs --hold_names $(prefix)/j7aa_merge_peaks_logs
+
+# goddamn it make requires patterns for multi-target rules
+%peaks_2000_region.fa: %aligned.peaks.annotated.capped.filtered
+	echo DEPS $*peaks_2000_region.fa: $*aligned.peaks.annotated.capped.filtered
+	echo "cat $(prefix)/aligned.peaks.annotated.capped.filtered | awk -F ',' -v u=$(up_oc) -v d=$(down_oc)  '{if (NR>1){seqStart=(\$$6-2000); if (\$$2 == \"+\"){start=(\$$6-u); end=(\$$6+d); if (start < 0){start = 0}} else {end=\$$6+u; start=\$$6-d; if(start<0){start=0}} print \$$10\"_\"\$$1\"_\"seqStart\"_0\t\"\$$1\"\t\"start\"\t\"end}}' | sort -k1,1 | uniq  > $(tss_region_for_oc_overall);  software/get_seqs.pl $(prefix)/aligned.peaks.annotated.capped.filtered 2000 2000 $(genome) | software/dedup_fasta.sh > $(prefix)/peaks_2000_region.fa " | \
+		SGE_Array -q $(queues) -m 10G -r $(prefix)/j7b_peaks_narrow_region_logs --hold_names $(prefix)/j7aa_merge_peaks_logs
+
+# Then search them
+%roe_3000.FWD.table %roe_3000.FWD.locs %roe_3000.FWD.cumscores %roe_3000.REV.table %roe_3000.REV.locs %roe_3000.REV.cumscores: %peaks_3000_region.fa 
+	echo DEPS $*roe_3000.FWD.table $*roe_3000.FWD.locs $*roe_3000.FWD.cumscores $*roe_3000.REV.table $*roe_3000.REV.locs $*roe_3000.REV.cumscores: $*peaks_3000_region.fa 
+	echo java -Xms100G -Xmx200G -jar software/TFBS_Scanner_Suite/tfbs_scan.jar ROEFinder --pseudoCounts $(pseudoCounts) -n 48 --plotDir $(prefix)/roe_plots $(pwm) $(prefix)/peaks_3000_region.fa $(prefix)/roe_3000 | \
+		SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j8_roefinder_logs --hold_names $(prefix)/j7a_peaks_wide_region_logs
+		
+# Finally make the features
+# try this to make multiple targets with a single command (rather than running it twice!) : http://stackoverflow.com/a/3077254/99649
+
+
+%features_map.txt %features.rdat: %peaks_2000_region.fa %roe_3000.FWD.table %roe_3000.FWD.locs %roe_3000.FWD.cumscores %roe_3000.REV.table %roe_3000.REV.locs %roe_3000.REV.cumscores %peaks_3000_region.fa
+	echo DEPS $*features_map.txt $*features.rdat: $*peaks_2000_region.fa $*roe_3000.FWD.table $*roe_3000.FWD.locs $*roe_3000.FWD.cumscores $*roe_3000.REV.table $*roe_3000.REV.locs $*roe_3000.REV.cumscores $*peaks_3000_region.fa
+	echo java -Xms100G -Xmx200G -jar software/TFBS_Scanner_Suite/tfbs_scan.jar GenFeatures --pseudoCounts $(pseudoCounts) --mapFile $(prefix)/features_map.txt -n 48 $(prefix)/roe_3000.FWD.table $(prefix)/roe_3000.REV.table $(prefix)/peaks_2000_region.fa $(pwm) $(prefix)/features.rdat |\
+		SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j9_genfeatures_logs --hold_names $(prefix)/j8_roefinder_logs,$(prefix)/j7b_peaks_narrow_region_logs
+
+%tiled_features_map.txt %tiled_features.rdat: %peaks_2000_region.fa %roe_3000.FWD.table %roe_3000.FWD.locs %roe_3000.FWD.cumscores %roe_3000.REV.table %roe_3000.REV.locs %roe_3000.REV.cumscores %peaks_3000_region.fa
+	echo DEPS $*tiled_features_map.txt $*tiled_features.rdat: $*peaks_2000_region.fa $*roe_3000.FWD.table $*roe_3000.FWD.locs $*roe_3000.FWD.cumscores $*roe_3000.REV.table $*roe_3000.REV.locs $*roe_3000.REV.cumscores $*peaks_3000_region.fa
+	echo java -Xms100G -Xmx200G -jar software/TFBS_Scanner_Suite_MitraEditted/tfbs_scan.jar GenFeaturesTiledWins --nucsUp 500 --nucsDown 100 --winWidth 100 --mapFile $(prefix)/tiled_features_map.txt -n 48 $(prefix)/peaks_2000_region.fa $(pwm) $(prefix)/tiled_features.rdat |\
+		SGE_Array -P 10 -q $(queues) -m 200G -r $(prefix)/j9b_genfeatures_tiled_logs --hold_names $(prefix)/j8_roefinder_logs,$(prefix)/j7b_peaks_narrow_region_logs
+
+
+%features_long.txt: %features.rdat %features_map.txt
+	echo DEPS $*features_long.txt: $*features.rdat $*features_map.txt
+	echo cat $(prefix)/features.rdat \| software/wide_2_long.R \> $(prefix)/features_long.txt |\
+		SGE_Array -P 1 -q $(queues) -m 300G -r $(prefix)/j10_longfeatures_logs --hold_names $(prefix)/j9_genfeatures_logs
+	
+
+%tiled_features_long.txt: %tiled_features.rdat %tiled_features_map.txt
+	echo DEPS $*tiled_features_long.txt: $*tiled_features.rdat $*tiled_features_map.txt
+	echo cat $(prefix)/tiled_features.rdat \| software/wide_2_long.R \> $(prefix)/tiled_features_long.txt |\
+		SGE_Array -P 1 -q $(queues) -m 300G -r $(prefix)/j10b_longfeatures_tiled_logs --hold_names $(prefix)/j9b_genfeatures_tiled_logs
+
+
+
+
+# SET 4
+################################
+###
+### Generating OC features, Leaf
+###
+################################
+
+%oc_alignment_leaf.bam: $(input_oc_fastq_leaf) $(bowtie_db).1.ebwt
+ifeq ($(skip_making_bams),1)
+	echo DEPS $*oc_alignment_leaf.bam:
+	mkdir -p $(prefix)
+	echo ln -s ../$(premadefiles)/oc_alignment_leaf.bam $(prefix)/oc_alignment_leaf.bam | \
+		SGE_Array -P 1 -q $(queues) -m 1G -r $(prefix)/j1_oc_leaf_bowtie_logs 
+else
+	echo DEPS $*oc_alignment_leaf.bam: $(input_oc_fastq_leaf) $(bowtie_db).1.ebwt
+	echo bowtie -p 40 -v 0 -m 1 -a --best --strata --sam-no-qname-trunc -S $(bowtie_db) $(input_oc_fastq_leaf) \| software/remove_no_hits.pl \| software/samtools sort -T \$$TMPDIR/tempfiles -O bam \> $(prefix)/oc_alignment_leaf.bam | \
+		SGE_Array -P 10 -q $(queues) -m 40G -r $(prefix)/j1_oc_leaf_bowtie_logs
+endif
+
+
+
+%oc_alignment_leaf.bed: %oc_alignment_leaf.bam
+	echo DEPS $*oc_alignment_leaf.bed: $*oc_alignment_leaf.bam
+	echo software/bamToBed -i $(prefix)/oc_alignment_leaf.bam \| grep -v \'Chr[CM]\' \> $(prefix)/oc_alignment_leaf.bed | \
+ 		SGE_Array -q $(queues) -m 40G -r $(prefix)/j2_oc_leaf_bamtobed_logs --hold_names $(prefix)/j1_oc_leaf_bowtie_logs
+		
+
+%oc_peaks_leaf.bed: %oc_alignment_leaf.bed
+	echo DEPS $*oc_peaks_leaf.bed: $*oc_alignment_leaf.bed
+	echo mkdir -p $(prefix)/peaks_dir_leaf\; cd $(prefix)/peaks_dir_leaf\; ../../software/fseq-1.84/bin/fseq -f 0 -l 200 -of bed -t $(threshold_oc) ../oc_alignment_leaf.bed\; cat Chr*.bed \> ../oc_peaks_leaf.bed\; rm Chr*.bed | \
+		SGE_Array -q $(queues) -m 100G -r $(prefix)/j3_oc_leaf_peak_logs --hold_names $(prefix)/j2_oc_leaf_bamtobed_logs
+
+clean_oc: 
+	echo DEPS clean_oc: 
+	rm $(prefix)/oc_*
+	rm -rf $(prefix)/j*_oc*
+
+
+
+
+# SET 5
+#####################################################
+###
+### Merging to create OC percentage features for leaf
+###
+#####################################################
+
+%features_long_oc_p_leaf.txt: %oc_peaks_leaf.bed %features_long.txt %features_map.txt
+	echo DEPS $*features_long_oc_p_leaf.txt: $*oc_peaks_leaf.bed $*features_long.txt $*features_map.txt
+	echo software/compute_oc_overlap.sh $(prefix)/features_map.txt $(prefix)/oc_peaks_leaf.bed OC_P_LEAF $(prefix)/features_long_oc_p_leaf.txt $(prefix)/roes 100000 40 |\
+		SGE_Array -P 40 -q $(queues) -m 200G -r $(prefix)/j1_merge_oc_p_leaf_logs --hold_names $(prefix)/j10_longfeatures_logs,$(prefix)/j3_oc_leaf_peak_logs
+
+%tiled_features_long_oc_p_leaf.txt: %oc_peaks_leaf.bed %tiled_features_long.txt %tiled_features_map.txt
+	echo DEPS $*tiled_features_long_oc_p_leaf.txt: $*oc_peaks_leaf.bed $*tiled_features_long.txt $*tiled_features_map.txt
+	echo software/compute_oc_overlap.sh $(prefix)/tiled_features_map.txt $(prefix)/oc_peaks_leaf.bed OC_P_LEAF $(prefix)/tiled_features_long_oc_p_leaf.txt $(prefix)/tiled 100000 40 |\
+		SGE_Array -P 40 -q $(queues) -m 200G -r $(prefix)/j1b_merge_oc_p_leaf_tiled_logs --hold_names $(prefix)/j10b_longfeatures_tiled_logs,$(prefix)/j3_oc_leaf_peak_logs
+	
+
+
+# SET 6
+################################
+###
+### Generating OC features, Root
+###
+################################
+
+%oc_alignment_root.bam: $(input_oc_fastq_root) $(bowtie_db).1.ebwt
+ifeq ($(skip_making_bams),1)
+	echo DEPS $*oc_alignment_root.bam:
+	mkdir -p $(prefix)
+	echo ln -s ../$(premadefiles)/oc_alignment_root.bam $(prefix)/oc_alignment_root.bam | \
+		SGE_Array -P 1 -q $(queues) -m 1G -r $(prefix)/j1_oc_root_bowtie_logs
+else
+	echo DEPS $*oc_alignment_root.bam: $(input_oc_fastq_root) $(bowtie_db).1.ebwt
+	echo bowtie -p 40 -v 0 -m 1 -a --best --strata --sam-no-qname-trunc -S $(bowtie_db) $(input_oc_fastq_root) \| software/remove_no_hits.pl \| software/samtools sort -T \$$TMPDIR/tempfiles -O bam \> $(prefix)/oc_alignment_root.bam | \
+		SGE_Array -P 10 -q $(queues) -m 40G -r $(prefix)/j1_oc_root_bowtie_logs
+endif
+
+
+
+%oc_alignment_root.bed: %oc_alignment_root.bam
+	echo DEPS $*oc_alignment_root.bed: $*oc_alignment_root.bam
+	echo software/bamToBed -i $(prefix)/oc_alignment_root.bam \| grep -v \'Chr[CM]\' \> $(prefix)/oc_alignment_root.bed | \
+ 		SGE_Array -q $(queues) -m 40G -r $(prefix)/j2_oc_root_bamtobed_logs --hold_names $(prefix)/j1_oc_root_bowtie_logs
+		
+
+%oc_peaks_root.bed: %oc_alignment_root.bed
+	echo DEPS $*oc_peaks_root.bed: $*oc_alignment_root.bed
+	echo mkdir -p $(prefix)/peaks_dir_root\; cd $(prefix)/peaks_dir_root\; ../../software/fseq-1.84/bin/fseq -f 0 -l 200 -of bed -t $(threshold_oc) ../oc_alignment_root.bed\; cat Chr*.bed \> ../oc_peaks_root.bed\; rm Chr*.bed | \
+		SGE_Array -q $(queues) -m 100G -r $(prefix)/j3_oc_root_peak_logs --hold_names $(prefix)/j2_oc_root_bamtobed_logs
+
+
+
+
+# SET 7
+#####################################################
+###
+### Merging to create OC percentage features for root
+###
+#####################################################
+
+%features_long_oc_p_root.txt: %oc_peaks_root.bed %features_long.txt %features_map.txt
+	echo DEPS $*features_long_oc_p_root.txt: $*oc_peaks_root.bed $*features_long.txt $*features_map.txt
+	echo software/compute_oc_overlap.sh $(prefix)/features_map.txt $(prefix)/oc_peaks_root.bed OC_P_ROOT $(prefix)/features_long_oc_p_root.txt $(prefix)/roes 100000 40 |\
+		SGE_Array -P 40 -q $(queues) -m 200G -r $(prefix)/j1_merge_oc_p_root_logs --hold_names $(prefix)/j10_longfeatures_logs,$(prefix)/j3_oc_root_peak_logs
+
+%tiled_features_long_oc_p_root.txt: %oc_peaks_root.bed %tiled_features_long.txt %tiled_features_map.txt
+	echo DEPS $*tiled_features_long_oc_p_root.txt: $*oc_peaks_root.bed $*tiled_features_long.txt $*tiled_features_map.txt
+	echo software/compute_oc_overlap.sh $(prefix)/tiled_features_map.txt $(prefix)/oc_peaks_root.bed OC_P_ROOT $(prefix)/tiled_features_long_oc_p_root.txt $(prefix)/tiled 100000 40 |\
+		SGE_Array -P 40 -q $(queues) -m 200G -r $(prefix)/j1b_merge_oc_p_root_tiled_logs --hold_names $(prefix)/j10b_longfeatures_tiled_logs,$(prefix)/j3_oc_root_peak_logs
+	
+
+# SET 7.5
+################################
+###
+### Generating overall openness; one for leaf, one for root
+###
+################################
+
+
+%features_long_oc_p_overall_leaf.txt: %oc_peaks_leaf.bed
+	echo DEPS $*features_long_oc_p_overall_leaf.txt: $*oc_peaks_leaf.bed \$(tss_region_for_oc_overall)
+	echo software/compute_range_overlap.sh $(tss_region_for_oc_overall) $(prefix)/oc_peaks_leaf.bed LEAF $(prefix)/features_long_oc_p_overall_leaf.txt |\
+		SGE_Array -q $(queues) -m 200G -r $(prefix)/j7.5_merge_oc_p_overall_leaf_logs --hold_names $(prefix)/j10_longfeatures_logs,$(prefix)/j3_oc_leaf_peak_logs,$(prefix)/j7c_peak_ranges_logs,$(prefix)/j7b_peaks_narrow_region_logs
+
+%features_long_oc_p_overall_root.txt: %oc_peaks_root.bed 
+	echo DEPS $*features_long_oc_p_overall_root.txt: $*oc_peaks_root.bed \$(tss_region_for_oc_overall)
+	echo software/compute_range_overlap.sh $(tss_region_for_oc_overall) $(prefix)/oc_peaks_root.bed ROOT $(prefix)/features_long_oc_p_overall_root.txt |\
+		SGE_Array -q $(queues) -m 200G -r $(prefix)/j7.5_merge_oc_p_overall_root_logs --hold_names $(prefix)/j10_longfeatures_logs,$(prefix)/j3_oc_root_peak_logs,$(prefix)/j7c_peak_ranges_logs,$(prefix)/j7b_peaks_narrow_region_logs
+
+
+# SET 8
+#####################################################
+###
+### Merging allll the features together
+###
+#####################################################
+
+%all_features_diffs_wide.rdat: %features.rdat %tiled_features.rdat %features_long_oc_p_overall_leaf.txt %features_long_oc_p_overall_root.txt %features_long_oc_p_leaf.txt %features_long_oc_p_root.txt %tiled_features_long_oc_p_leaf.txt %tiled_features_long_oc_p_root.txt $(input_expr_diff)
+	echo DEPS $*all_features_diffs_wide.rdat: $*features.rdat $*tiled_features.rdat $*features_long_oc_p_overall_leaf.txt $*features_long_oc_p_overall_root.txt $*features_long_oc_p_leaf.txt $*features_long_oc_p_root.txt $*tiled_features_long_oc_p_leaf.txt $*tiled_features_long_oc_p_root.txt $(input_expr_diff)
+	echo software/merge_features.R $(prefix)/features.rdat $(prefix)/tiled_features.rdat $(prefix)/features_long_oc_p_leaf.txt $(prefix)/features_long_oc_p_root.txt $(prefix)/tiled_features_long_oc_p_leaf.txt $(prefix)/tiled_features_long_oc_p_root.txt  $(prefix)/features_long_oc_p_overall_leaf.txt $(prefix)/features_long_oc_p_overall_root.txt $(input_expr_diff) $(prefix)/all_features_diffs_wide.rdat |\
+		SGE_Array -q $(queues) -m 200G -r $(prefix)/j1_merge_all_features --hold_names $(prefix)/j9_genfeatures_logs,$(prefix)/j9b_genfeatures_tiled_logs,$(prefix)/j1_merge_oc_p_leaf_logs,$(prefix)/j1_merge_oc_p_leaf_tiled_logs,$(prefix)/j1_merge_oc_p_root_logs,$(prefix)/j1b_merge_oc_p_root_tiled_logs,$(prefix)/j7.5_merge_oc_p_overall_leaf_logs,$(prefix)/j7.5_merge_oc_p_overall_root_logs
+
