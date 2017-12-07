@@ -90,7 +90,7 @@ plot_roe <- function(plot_outdir) {
   outTable[1,4] <- format(right, digits=2) 
   
   dimnames(outTable)[[2]] <- c("MaxPeakLoc", "HalfWidth", "Left", "Right")
-  pwmName <- unlist(strsplit(f, "[.]"))[1]
+  pwmName <- unlist(strsplit(f, ".dist"))[1]
   dimnames(outTable)[[1]] <- pwmName
   write.table(outTable, file=outfname, row.names=T, col.names=T, quote=F, sep="	")
   # Plot ROEs
@@ -229,7 +229,7 @@ for (f in flist) {
   smooth_scores <- peaks$y.hat
   
   # Don't consider peaks beyond 1.5kb frim TSS
-  mod_idxes = mod_idxes[which(locs[mod_idxes] > -1000 & locs[mod_idxes] < 1000)]
+  mod_idxes = mod_idxes[which(locs[mod_idxes] > -2000 & locs[mod_idxes] < 2000)]
   
   # Pre filter peaks that are almost equal to each other
   #if (!is_roe_exist(mod_idxes)) {
