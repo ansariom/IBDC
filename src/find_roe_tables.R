@@ -287,6 +287,7 @@ for (f in flist) {
       print("No ROE! left index is out of bound!")
       printout_NA_table(outfname)
       no_roe <- TRUE
+      break
     } 
     if (smooth_scores[leftind] < maxbgval) { 
       nBelow <- nBelow + 1 
