@@ -33,7 +33,7 @@ close_root <- all_peaks[all_peaks$tss_name %in% root_oc$tss_id,]
 length(unique(root_oc$tss_id))
 length(unique(leaf_oc$tss_id))
 
-root_oc <- leaf_oc
+#root_oc <- leaf_oc
 
 #all
 left = -1000
@@ -144,7 +144,7 @@ d = data.frame(location = "1000-3000", bp = r)
 
 ggplot(df, aes(x = location, y = bp, fill = location)) +
   geom_violin() + ylab("Size of Open region (basepair)") + xlab("Relative Location to TSS") +
-  theme_bw() + ggtitle("Coverage Regions of Open Chromatin (Leaf)")
+  theme_bw() + ggtitle("Coverage Regions of Open Chromatin (Root)")
 
 table(df$location)
 
