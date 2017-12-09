@@ -42,6 +42,9 @@ if (model_type == "tile_only") {
   missing_cols <- all_features_diffs_wide[,1:15]
   all_features_diffs_wide <- all_features_diffs_wide[, (grepl("_OC_", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]
   all_features_diffs_wide <- cbind(missing_cols, all_features_diffs_wide)
+} else if (model_type == "tfbs_only_tile") {
+  all_features_diffs_wide <- all_features_diffs_wide[, !(grepl("(FWD|REV)", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]
+  all_features_diffs_wide <- all_features_diffs_wide[, !grepl("OC_P_", colnames(all_features_diffs_wide))]
 } else if (model_type == "tfbs_only" ) {
   all_features_diffs_wide <- all_features_diffs_wide[, (!grepl("OC_P_", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]
 } else if (model_type == "roc_only") {

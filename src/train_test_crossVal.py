@@ -13,7 +13,7 @@ from os.path import os
 import pickle
 from __builtin__ import str
 
-max_param = 0.0005
+max_param = 0.006
 all_features = []
 test_all_features = []
 train_all_labels = []
@@ -25,7 +25,7 @@ learning_rate = 0.01
 training_epochs = 200
 batch_size = 100
 display_step = 50
-weight_decays = np.arange(0.00001, max_param ,0.00004) 
+weight_decays = np.arange(0.0001, max_param ,0.001) 
 fold = 0
 fold_results = []
 outdir = "-"
@@ -50,6 +50,11 @@ def split_data_train_test(seed):
     
     test_all_labels = np.asanyarray(test_all[:,-1], int32).reshape(len(test_all), 1)
     test_all_features = np.asanyarray(test_all[:,1:-1], float32)
+
+    train_tss_list = outdir + "/" + argsDict["model_type"] + "_train_tss_ids.txt"
+    test_tss_list = outdir + "/" + argsDict["model_type"] + "_test_tss_ids.txt"
+    np.savetxt(train_tss_list, train_all[:,0], delimiter = "\t", fmt="%s")
+    np.savetxt(test_tss_list, test_all[:,0], delimiter = "\t" , fmt = "%s")
     
 def split_train_cross_val(nfold):
     'split train into a pie with 5 section, 4 train 1 validation'
@@ -115,7 +120,7 @@ def split_train_cross_val(nfold):
     colors = {0:'red', 1:'blue', 2:'green', 3:'black', 4:'orange'}
     grouped = df.groupby('fold')
     for key, group in grouped:
-        group.plot(ax=ax, kind='line', x='param', y='auc', label=key, color=colors[key], xlim = [0, 0.0005], ylim = [0.4, 1])
+        group.plot(ax=ax, kind='line', x='param', y='auc', label=key, color=colors[key], xlim = [0, 0.01], ylim = [0.4, 1])
     plt.savefig(plot_file, dpi=300)
     
     return mean_param
@@ -142,7 +147,7 @@ def linear_model_simple(train_features, train_labels, test_features, test_labels
         sorted_coef_df.to_csv(coef_outfile, sep = "\t", columns = ('feature', 'coef'), index = False, header = False)
         pickle.dump(logreg, open(model_outfile, 'wb'))
         np.save(train_data_file, train_features)
-        
+
     fpr, tpr, thresholds = metrics.roc_curve(test_labels, y_pred_prob[:,1], pos_label=1)
     auroc = metrics.auc(fpr, tpr)
     average_precision = average_precision_score(test_labels, y_pred_prob[:,1])
@@ -208,7 +213,7 @@ if __name__ == "__main__":
         all_features = np.asanyarray(all_features)
 
     seeds = np.random.randint(12000, size = 3)
-    #seeds = [10657]
+    #seeds = [10657, 12421, 541]
     #seed = 3467
     for seed in iter(seeds):
         outdir = argsDict["outdir"] + "/" + str(seed)
@@ -220,10 +225,10 @@ if __name__ == "__main__":
         
         # cross validation and getting mean of best parameters
         mean_param = split_train_cross_val(5)
+	#mean_param = 0.000266
         
         # normalize whole train set
-    	#scaler = preprocessing.StandardScaler(with_mean=True, with_std=True).fit(train_all_features)
-        scaler = preprocessing.RobustScaler().fit(train_all_features)
+    	scaler = preprocessing.StandardScaler(with_mean=True, with_std=True).fit(train_all_features)
         #scaler = preprocessing.MinMaxScaler().fit(train_all_features)
         scaled_train_all = scaler.transform(train_all_features)
         scaled_test_all = scaler.transform(test_all_features)
@@ -235,5 +240,7 @@ if __name__ == "__main__":
         f.write(str(auroc) + "\t" + str(auprc) )
         f.close();
         print("heldout test : ", auroc, " prc = ", auprc)
+	unscaled_train_file = outdir + "/unscaled_train.npy"
+	np.save(unscaled_train_file, train_all_features)
     
     

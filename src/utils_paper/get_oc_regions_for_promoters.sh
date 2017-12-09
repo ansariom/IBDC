@@ -5,6 +5,10 @@ down=3000
 in_fasta=ibdc_roc-model_PWMs-0.09_up1000_down500/peaks_3000_region.fa
 outdir=utils_out/oc
 
+if [ ! -d $outdir ]; then
+	mkdir -p $outdir
+fi
+
 promoter_bed=$outdir/root_promoter.bed
 outfile=$outdir/root_promoter_open_regions_$up-$down".txt"
 

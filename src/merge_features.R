@@ -82,8 +82,11 @@ all_features_wide <- extract(all_features_wide, remove = FALSE,
 
 diff_all$gene_id <- diff_all$Accession
 diff_all$Accession <- NULL
-#all_tss_diffs_wide <- merge(diff_all, all_features_wide, by = "gene_id")
-#save(all_tss_diffs_wide, file = all_TSS_diff_outfile)
+all_tss_diffs_wide <- merge(diff_all, all_features_wide, by = "gene_id")
+save(all_tss_diffs_wide, file = all_TSS_diff_outfile)
+
+## save for python use
+# strip out the differential expression stuff
 
 diff_all <- NULL
 all_tss_diffs_wide <- NULL

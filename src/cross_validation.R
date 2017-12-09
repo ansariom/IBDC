@@ -215,7 +215,8 @@ save_model <- FALSE
 
 # chosen by fair die roll, gauranteed to be random
 #set.seed(1298)
-set.seed(7621)
+set.seed(12421)
+#set.seed(7621)
 #set.seed(2317)
 # load the features and differential expression data
 # into all_features_diffs_wide
