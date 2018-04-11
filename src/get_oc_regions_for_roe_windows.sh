@@ -24,11 +24,15 @@ outbase=`readlink -f $outdir/$outbasename`
 
 fprefix="$outbase".
 
-#awk '{print >> $1; close($1)}' $feature_map 
+# This was initial methid to get each TSS map in separate file but it runs slow so we get 
+# number of features then spli the file!
 
-#tail -n +2 $feature_map > $feature_map.tmp && mv "$feature_map.tmp" "$feature_map"
+#awk '{print >> $1; close($1)}' $feature_bed
 
-#split -a 5 -d -l $nfeatures $feature_map $fprefix
+## This requires knowing nfeatures per TSS (compute by hand)
+tail -n +2 $feature_bed > $feature_bed.tmp && mv "$feature_bed.tmp" "$feature_bed"
+
+split -a 5 -d -l $nfeatures $feature_bed $fprefix
 
 echo "Start computing OC overlaps ... "
 count=0

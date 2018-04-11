@@ -13,7 +13,7 @@ from os.path import os
 import pickle
 from __builtin__ import str
 
-max_param = 0.006
+max_param = 0.01
 all_features = []
 test_all_features = []
 train_all_labels = []
@@ -25,7 +25,7 @@ learning_rate = 0.01
 training_epochs = 200
 batch_size = 100
 display_step = 50
-weight_decays = np.arange(0.0001, max_param ,0.001) 
+weight_decays = np.arange(0.0001, max_param ,0.002) 
 fold = 0
 fold_results = []
 outdir = "-"
@@ -83,8 +83,8 @@ def split_train_cross_val(nfold):
         
         # normalize the data
 #        scaler = preprocessing.MinMaxScaler().fit(train_fold_features)
-        #scaler = preprocessing.StandardScaler(with_mean=True, with_std=True).fit(train_fold_features)
-        scaler = preprocessing.RobustScaler().fit(train_fold_features)
+        scaler = preprocessing.StandardScaler(with_mean=True, with_std=True).fit(train_fold_features)
+        #scaler = preprocessing.RobustScaler().fit(train_fold_features)
         scaled_train_features = scaler.transform(train_fold_features)
         scaled_test_features = scaler.transform(test_fold_features)
         for param in iter(weight_decays):
@@ -212,7 +212,7 @@ if __name__ == "__main__":
             all_features.append(np.asarray(row))
         all_features = np.asanyarray(all_features)
 
-    seeds = np.random.randint(12000, size = 3)
+    seeds = np.random.randint(120000, size = 3)
     #seeds = [10657, 12421, 541]
     #seed = 3467
     for seed in iter(seeds):
