@@ -6,6 +6,7 @@ Created on Dec 9, 2017
 
 import numpy as np
 import math
+import sys
 from numpy import dtype
 bg_M0 = [0.3486, 0.1599,    0.1498,    0.3417]
 bg_M1 = [0.4020, 0.1501, 0.1419, 0.3060,
@@ -18,13 +19,17 @@ print(bg_M1)
 
 di_nt= "ACGT"
 
-pwm_file = "/Users/mitra/Downloads/pwms_peat_core_agris_huges_dec2017.mat"
+#pwm_file = "/Users/mitra/Downloads/pwms_peat_core_agris_huges_dec2017.mat"
+pwm_file = sys.argv[1]
+outfile = sys.argv[2]
+
 line = ""
 pwm_name = ""
 s = []
 freq = []
 
-out = open("../max_loglik_scores_for_pwms.txt", "w")
+#out = open("../max_loglik_scores_for_pwms.txt", "w")
+out = open(outfile, "w")
 
 f = open(pwm_file, "r")
 for line in iter(f):

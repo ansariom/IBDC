@@ -39,8 +39,11 @@ if (model_type == "tile_only") {
   ### or, remove tiled features
   all_features_diffs_wide <- all_features_diffs_wide[, !grepl("tile", colnames(all_features_diffs_wide)) ]
 } else if (model_type == "oc_only") {
-  missing_cols <- all_features_diffs_wide[,1:15]
-  all_features_diffs_wide <- all_features_diffs_wide[, (grepl("_OC_", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]
+  diffs_colnames <- c("gene_id", "pval", "qval", "b", "se_b", "mean_obs", "var_obs",
+                    "tech_var", "sigma_sq", "smooth_sigma_sq", "final_sigma_sq",
+                    "tss_name", "chr", "loc", "strand", "offset?")
+  missing_cols <- all_features_diffs_wide[, colnames(all_features_diffs_wide) %in% diffs_colnames]
+  all_features_diffs_wide <- all_features_diffs_wide[, grepl("OC_P_", colnames(all_features_diffs_wide)) ]
   all_features_diffs_wide <- cbind(missing_cols, all_features_diffs_wide)
 } else if (model_type == "tfbs_only_tile") {
   all_features_diffs_wide <- all_features_diffs_wide[, !(grepl("(FWD|REV)", colnames(all_features_diffs_wide)) & !grepl("tile", colnames(all_features_diffs_wide))) ]

@@ -33,13 +33,13 @@ tiled_features <- as.data.frame(fread(tile_feature_wide_file, header = TRUE, str
 tiled_features$tss_name <- tiled_features$V1
 tiled_features$V1 <- NULL
 tiled_features <- tiled_features[order(tiled_features$tss_name),]
-print(tiled_features[1:5,1:10])
+print(dim(tiled_features))
 
 load(oc_leaf_overall1_file)
 oc_features_overall1_leaf <- all_features_wide
 oc_features_overall1_leaf <- oc_features_overall1_leaf[order(oc_features_overall1_leaf$tss_name),]
-print(oc_features_overall1_leaf[1:3,])
 oc_features_overall1_leaf$tss_name <- NULL
+print(dim(oc_features_overall1_leaf))
 
 #load(oc_leaf_overall2_file)
 #oc_features_overall2_leaf <- all_features_wide
@@ -52,6 +52,7 @@ oc_features_overall1_root <- all_features_wide
 oc_features_overall1_root <- oc_features_overall1_root[order(oc_features_overall1_root$tss_name),]
 oc_features_overall1_root[1:3,]
 oc_features_overall1_root$tss_name <- NULL
+print(dim(oc_features_overall1_root))
 
 #load(oc_root_overall2_file)
 #oc_features_overall2_root <- all_features_wide
@@ -62,14 +63,14 @@ oc_features_overall1_root$tss_name <- NULL
 load(oc_leaf_tile_file)
 oc_features_leaf_tile <- all_features_wide
 oc_features_leaf_tile <- oc_features_leaf_tile[order(oc_features_leaf_tile$tss_name),]
-print(oc_features_leaf_tile[1:3,1:10])
 oc_features_leaf_tile$tss_name <- NULL
+print(dim(oc_features_leaf_tile))
 
 load(oc_root_tile_file)
 oc_features_root_tile <- all_features_wide
 oc_features_root_tile <- oc_features_root_tile[order(oc_features_root_tile$tss_name),]
-print(oc_features_root_tile[1:3,1:10])
 oc_features_root_tile$tss_name <- NULL
+print(dim(oc_features_root_tile))
 
 
 #all_features <- cbind(tiled_features, oc_features_overall1_leaf, oc_features_overall2_leaf, oc_features_overall1_root, oc_features_overall2_root, oc_features_leaf_tile, oc_features_root_tile)
@@ -78,6 +79,11 @@ save(all_features, file = "all_features_temp.R")
 print("all_features_wide is ready" )
 print(nrow(all_features))
 print(ncol(all_features))
+
+print("NA coordinates (if any):")
+print(which(is.na(all_features), arr.ind = TRUE))
+
+
 
 ## cleanup a bit to save RAM
 rm(oc_features_root_tile)
@@ -118,6 +124,10 @@ print("Done! We want to save them now!")
 #rm(all_features)
 #rm(diff)
 #gc()
+print("NA 2 coordinates (if any):")
+print(which(is.na(all_features_diffs_wide), arr.ind = TRUE))
+all_features_diffs_wide[is.na(all_features_diffs_wide)] <- 0
+
 
 save(all_features_diffs_wide, file = diffs_output_file)
 

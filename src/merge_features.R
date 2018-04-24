@@ -31,6 +31,8 @@ all_TSS_diff_outfile <- args[8]
 features <- read.table(feat_wide_file, header = TRUE, stringsAsFactors = FALSE, check.names = F)
 features$tss_name <- rownames(features)
 features_long <- gather(features, feature, value, -tss_name)
+mean(features_long$value)
+median(features_long$value)
 
 oc_features_leaf <- read.table(oc_leaf_long_file, header = FALSE, col.names = c("tss_name", "feature", "value"), stringsAsFactors = FALSE)
 oc_features_root <- read.table(oc_root_long_file, header = FALSE, col.names = c("tss_name", "feature", "value"), stringsAsFactors = FALSE)
@@ -43,6 +45,8 @@ all_features_long <- rbind(features_long, oc_features_leaf, oc_features_root, oc
 # to here: ~ 15 mins, 15 gigs (before tiled features addition...)
 print("Step1")
 all_features_wide <- spread(all_features_long, feature, value)
+print(which(is.na(all_features_wide), arr.ind = TRUE))
+all_features_wide[is.na(all_features_wide)] <- 0
 print("all_features_wide is ready" )
 
 ## cleanup a bit to save RAM

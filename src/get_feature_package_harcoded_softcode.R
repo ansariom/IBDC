@@ -18,7 +18,7 @@ rownames(diffs_classes) <- diffs_classes$tss_name
 diffs_colnames <- c("gene_id", "pval", "qval", "b", "se_b", "mean_obs", "var_obs", 
                     "tech_var", "sigma_sq", "smooth_sigma_sq", "final_sigma_sq", 
                     "tss_name", "chr", "loc", "strand", "offset?")
-features <- all_features_diffs_wide[, !grepl("tile", colnames(all_features_diffs_wide)) ]
+features <- all_features_diffs_wide
 rownames(features) <- features$tss_name
 features <- features[, !colnames(features) %in% diffs_colnames]
 
