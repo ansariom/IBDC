@@ -1,10 +1,26 @@
-load("~/Downloads/featureinfo_features_diffsclasses.Rdata")
+load("~/Downloads/featureInfo_hardCodedSoftCoded.rdat")
+expr_mean = read.table("~/Downloads/mean_norm_leaf_root.txt", header = T)
+
 classified_data = diffs_classes[(diffs_classes["class"] != -1000),]
-#missclassified_data = 
+expr_promoters <- merge(classified_data, expr_mean, by.x = "gene_id", by.y = "target_id")
+ggplot(expr_promoters, aes(mean_root_norm, mean_leaf_norm)) + geom_point(shape = 1) +
+  ggtitle("mean normalized expression levele for diff expressed genes")
+
+expr_promoters$mean_root_leaf_expr <- (expr_promoters$mean_leaf_norm + expr_promoters$mean_root_norm)/2
+expr_levels <- data.frame(table(cut(expr_promoters$mean_root_leaf_expr, breaks = seq(1, 500, 10))))
+expr_levels$bin <- seq(1, nrow(expr_levels))
+expr_levels$bin <- (expr_levels$bin - 1) * 10
+ggplot(expr_levels, aes(bin, Freq)) + geom_bar(stat = "identity") + xlab("mean normalized expression")
+lowly_expressed <- expr_promoters[expr_promoters$mean_leaf_norm < 20 & expr_promoters$mean_root_norm < 20,]
+
 
 missclassified_1 = diffs_classes[(diffs_classes["prob0"]>0.5) & (diffs_classes["class"]==1),]
 missclassified_0 = diffs_classes[(diffs_classes["prob1"]>0.5) & (diffs_classes["class"]==0),]
 missclassified = rbind(missclassified_0, missclassified_1)
+expr_miss <- merge(missclassified, expr_mean, by.x = "gene_id", by.y = "target_id")
+ggplot(expr_miss, aes(mean_root_norm, mean_leaf_norm)) + geom_point(shape = 1) +
+  ggtitle("mean normalized expression level for misclassified genes")
+highest_diff_misclassed = expr_miss[expr_miss$mean_leaf_norm > 500 | expr_miss$mean_root_norm > 500,]
 
 correct_class_rowids = setdiff(row.names(classified_data),row.names(missclassified))
 correctly_classified = classified_data[correct_class_rowids,]
@@ -14,7 +30,7 @@ aggregate(correctly_classified[,"prob0"], by=list(correctly_classified[,"class"]
 aggregate(missclassified[,"prob1"], by=list(missclassified[,"class"]), mean)
 aggregate(missclassified[,"prob0"], by=list(missclassified[,"class"]), mean)
 
-#### Plot the distribution of probabolities taht are lead to miss-classification
+#### Plot the distribution of probabolities that leads to miss-classification
 library(ggplot2)
 missclassified <- within(missclassified, class_diff <- abs(prob1 - prob0))
 ggplot(missclassified, aes(prob0, prob1)) + geom_point(shape = 1, aes(colour = class_diff)) + 
@@ -31,7 +47,8 @@ library(reshape)
 correct_features <- features[correct_class_rowids,]
 correct_features = cbind(correct_features, class = correctly_classified[,"class"] [match(row.names(correct_features), row.names(correctly_classified))])
 
-extremely_missclassified <- missclassified[missclassified["class_diff"] > 0.5, ]
+extremely_missclassified <- missclassified[missclassified["class_diff"] > 0.6, ]
+extremely_missclassified <- highest_diff_misclassed
 miss_ids = row.names(extremely_missclassified)
 
 feature_means <- aggregate(correct_features, by = list(correct_features[,"class"]), mean)
@@ -41,7 +58,6 @@ colnames(feature_means) <- c("true_mean_root", "true_mean_leaf")
 feature_means = feature_means[-1,]
 feature_means$feature_id <- row.names(feature_means)
 #feature_means = melt(feature_means, id=c("feature_id"))
-
 
 miss_features <- features[miss_ids,]
 miss_features <- cbind(miss_features, class = extremely_missclassified[,"class"] [match(row.names(extremely_missclassified), row.names(miss_features))])
@@ -82,9 +98,9 @@ ggplot(selected_ordered_oc, aes(selected_ordered_oc$pwm, fill = factor(tissue)))
 
 
 selected_ordered_tfbs <- ordered_tfbs[1:100,]
-#ggplot(selected_ordered_tfbs, aes(as.numeric(selected_ordered_tfbs$window))) + geom_histogram(bins = 14) +
- # ggtitle("Freq of observation of very different TFBS scores between \n correctly classified vs. miss-classified genes ") + 
-  #xlab("window_number") + ylab("frequency")
+ggplot(selected_ordered_tfbs, aes(as.numeric(selected_ordered_tfbs$window), fill = factor(tissue))) + geom_histogram(bins = 14) +
+  ggtitle("Freq of observation of very different TFBS scores between \n correctly classified vs. miss-classified genes ") + 
+  xlab("window_number") + ylab("frequency")
 
 # Merge   selected OC and tfbs and look at gene level
 selected_both <- rbind(selected_ordered_oc, selected_ordered_tfbs)
