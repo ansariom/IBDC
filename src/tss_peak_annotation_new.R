@@ -52,6 +52,8 @@ root_peaks <- root_peaks[root_peaks$ReadCount > min_reads & root_peaks$Transcrip
 ### Annotate Peaks
 ############################################################
 get_annotated_peaks <- function(in_peaks) {
+  print("assign peaks")
+  
   trx_no <- aggregate(gff$GeneName, list(gff$GeneName), length)
   colnames(trx_no) <- c("GeneName", "nTranscripts")
   
@@ -63,12 +65,15 @@ get_annotated_peaks <- function(in_peaks) {
   ## peaks covering one transcripts out of total 1 transcript
   true_one <- ref_trx_no[ref_trx_no$nTranscripts == 1 & ref_trx_no$nTranscripts_peaks >= 1,]
   peaks_g1 <- in_peaks[in_peaks$GeneName %in% true_one$GeneName,]
+  print(dim(peaks_g1))
   
   ## Peaks covering one out of n true transcripts (assign all others to the peak)
   peaks1_missed_others <- ref_trx_no[ref_trx_no$nTranscripts_peaks == 1 & ref_trx_no$nTranscripts > 1,]
   peaks_g2 <- in_peaks[in_peaks$GeneName %in% peaks1_missed_others$GeneName,]
   peaks_g2$TranscriptID <- NULL
   peaks_g2 <- merge(peaks_g2, gff[,c("GeneName", "TranscriptID")], by = "GeneName")
+  print(dim(peaks_g2))
+  
   
   g12 <- rbind(peaks_g1, peaks_g2)
   
@@ -83,6 +88,8 @@ get_annotated_peaks <- function(in_peaks) {
   peaks_g3 <- in_peaks[in_peaks$GeneName %in% others_eqDistance$GeneName,]
   peaks_g3$TranscriptID <- NULL
   peaks_g3 <- unique(merge(peaks_g3, gff[,c("GeneName", "TranscriptID")], by = "GeneName"))
+  print(dim(peaks_g3))
+  
   g123 <- rbind(g12, peaks_g3)
   
   others <- others[!others$tss_name %in% eq_dist$Group.1,]
@@ -98,7 +105,9 @@ get_annotated_peaks <- function(in_peaks) {
 }
 
 leaf_peaks <- get_annotated_peaks(leaf_peaks)
+print(dim(leaf_peaks))
 root_peaks <- get_annotated_peaks(root_peaks)
+print(dim(root_peaks))
 
 leaf_peaks$tissue <- "leaf"
 root_peaks$tissue <- "root"
