@@ -53,7 +53,7 @@ root_peaks <- root_peaks[root_peaks$ReadCount > min_reads & root_peaks$Transcrip
 ############################################################
 get_annotated_peaks <- function(in_peaks, gff) {
   print("assign peaks")
-  
+  print(dim(gff))
   trx_no <- aggregate(gff$GeneName, list(gff$GeneName), length)
   colnames(trx_no) <- c("GeneName", "nTranscripts")
   
