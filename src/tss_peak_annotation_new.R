@@ -51,7 +51,7 @@ root_peaks <- root_peaks[root_peaks$ReadCount > min_reads & root_peaks$Transcrip
 ############################################################
 ### Annotate Peaks
 ############################################################
-get_annotated_peaks <- function(in_peaks) {
+get_annotated_peaks <- function(in_peaks, gff) {
   print("assign peaks")
   
   trx_no <- aggregate(gff$GeneName, list(gff$GeneName), length)
@@ -104,9 +104,9 @@ get_annotated_peaks <- function(in_peaks) {
   
 }
 
-leaf_peaks <- get_annotated_peaks(leaf_peaks)
+leaf_peaks <- get_annotated_peaks(leaf_peaks, gff)
 print(dim(leaf_peaks))
-root_peaks <- get_annotated_peaks(root_peaks)
+root_peaks <- get_annotated_peaks(root_peaks, gff)
 print(dim(root_peaks))
 
 leaf_peaks$tissue <- "leaf"
