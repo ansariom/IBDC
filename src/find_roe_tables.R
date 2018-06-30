@@ -169,15 +169,20 @@ get_max_peak <- function(above_avg_mod_idxes, extreme_max_idxs) {
 
 args <- commandArgs(trailingOnly = TRUE)
 
-if (length(args) < 4 ) {
-        print("Usage: ./find_roe_tables.R [input_dists_dir] [outdir] [pwm_labels (sorted as same aspwm.mat file)] [table_outbase]\n")
-        quit("no", 1)
-}
+#if (length(args) < 4 ) {
+#        print("Usage: ./find_roe_tables.R [input_dists_dir] [outdir] [pwm_labels (sorted as same aspwm.mat file)] [table_outbase]\n")
+#        quit("no", 1)
+#}
 
 input_dist_dir <- args[1]
 outdir <- args[2]
 pwm_labels <- args[3]
 table_outbase <- args[4]
+
+#input_dist_dir <- "~/Downloads/ibdc/dists/"
+#outdir <- "~/Downloads/ibdc/new_roe"
+#pwm_labels <- "~/Downloads/ibdc/pwm_labels.txt"
+#table_outbase <- "roe_table"
 
 strands <- c("FWD", "REV")
 
@@ -185,12 +190,13 @@ strands <- c("FWD", "REV")
 #outdir <- "~/Downloads/test/plots/"
 
 # Init default parameters 
-w <- 100 # win length for signal mode finder
+w <- 500 # win length for signal mode finder
 span <- 0.01 # span size [0,1] (small values = more sensitive)
-buffer_left <- 50
-buffer_right <- 50
+buffer_left <- 100
+buffer_right <- 100
 peak_mode_loc <- -6000
 max_neighbor_dist <- 500
+
 
 #------------ Start Main Loop Over all dists --------------
 if ( !dir.exists(paths=outdir) ) {
@@ -203,7 +209,7 @@ for(strand in strands) {
   plot_outdir <- paste(outdir,  "/", strand, sep = "")
   dir.create(file.path(outdir, strand ), showWarnings = FALSE)
 for (f in flist) {
-  #f <- flist[1]
+  #f <- flist[3]
   dist_tbl <- read.table(paste(indir, f, sep = ""), header = F)
   print(paste(indir, f, sep = ""))
   locs <- dist_tbl[,1] 
@@ -229,7 +235,7 @@ for (f in flist) {
   smooth_scores <- peaks$y.hat
   
   # Don't consider peaks beyond 1.5kb frim TSS
-  mod_idxes = mod_idxes[which(locs[mod_idxes] > -2000 & locs[mod_idxes] < 2000)]
+  mod_idxes = mod_idxes[which(locs[mod_idxes] > -1000 & locs[mod_idxes] < 1000)]
   
   # Pre filter peaks that are almost equal to each other
   #if (!is_roe_exist(mod_idxes)) {
@@ -239,11 +245,18 @@ for (f in flist) {
   #}
   
   # get top two mode locations
-  if (length(mod_idxes > 2)) {
+  if (length(mod_idxes) > 2) {
     last_idx = 2
   } else {
     last_idx = length(mod_idxes)
   }
+  
+  #max_mod_score = max(smooth_scores[mod_idxes])
+  #max_mod_idx = mod_idxes[smooth_scores[mod_idxes] == max_mod_score]
+  #peaks_mod_mean <- mean(smooth_scores[mod_idxes != max_mod_idx])
+  #cutoff <- mean(smooth_scores[mod_idxes]) + sd(smooth_scores[mod_idxes])
+  #mod_idxes[smooth_scores[mod_idxes] > peaks_mod_mean]
+  
   cutoff <- sort(smooth_scores[mod_idxes], decreasing = T)[last_idx]
   above_avg_mod_idxes <- mod_idxes[which((smooth_scores[mod_idxes] >= cutoff))]
   if (length(above_avg_mod_idxes) < 1) {
@@ -253,15 +266,29 @@ for (f in flist) {
   }
   
   # which region have more strog binding site accumulation ( scores above Q3)
-  thr <- quantile(density(scores)$x)[[4]] + abs(quantile(density(scores)$x)[[4]] - max(density(scores)$x)) / 2
-  extreme_max_idxs <- which(scores > thr)
-  max_idx <- get_max_peak(above_avg_mod_idxes, extreme_max_idxs)
+  #thr <- quantile(density(scores)$x)[[4]] + abs(quantile(density(scores)$x)[[4]] - max(density(scores)$x)) / 2
+  #extreme_max_idxs <- which(scores > thr)
+  #max_idx <- get_max_peak(above_avg_mod_idxes, extreme_max_idxs)
+  max_sc <- sort(smooth_scores[above_avg_mod_idxes], decreasing = T)[1]
+  m <- mean(density(smooth_scores)$x)
+  if (max_sc - m < 50) {
+    print("No Peakkkkkkkk_____________")
+    printout_NA_table(outfname)
+    next
+  }
+  max_idx <- which(smooth_scores == max_sc)
   
   # set initial lef and right indexes for peak finding
   peak_mod_index <- max_idx
   leftind <- peak_mod_index
   rightind <- peak_mod_index
   peaks_scores <- smooth_scores[above_avg_mod_idxes]
+  
+  #---- NEW
+  # The peak smooth scores also are higher than avg?
+  
+  
+  
   # if the next highest peak is close, then set the right index at the second peak
   if (length(above_avg_mod_idxes) == 2) {
     if (abs(above_avg_mod_idxes[1] - above_avg_mod_idxes[2]) < max_neighbor_dist) {
@@ -272,10 +299,14 @@ for (f in flist) {
       } else {
         peak_mod_index <- above_avg_mod_idxes[2]
         leftind <- above_avg_mod_idxes[1]
-        rightin <- peak_mod_index
+        rightind <- peak_mod_index
       }
+    } else {
+      
     }
-  } 
+  } else {
+    print("ONEEEEEE====")
+  }
   
   #### Use old method to find region but using smoothed values
   # Find Left 
@@ -309,7 +340,7 @@ for (f in flist) {
       no_roe <- TRUE
       break
     }
-    if (smooth_scores[rightind] < maxbgval) { 
+    if (smooth_scores[rightind] <= maxbgval) { 
       nBelow <- nBelow + 1 
     } 
     rightind <- rightind + 1 
