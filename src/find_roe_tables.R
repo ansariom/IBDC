@@ -190,7 +190,7 @@ strands <- c("FWD", "REV")
 #outdir <- "~/Downloads/test/plots/"
 
 # Init default parameters 
-w <- 500 # win length for signal mode finder
+w <- 300 # win length for signal mode finder
 span <- 0.01 # span size [0,1] (small values = more sensitive)
 buffer_left <- 100
 buffer_right <- 100
@@ -276,7 +276,7 @@ for (f in flist) {
   #max_idx <- get_max_peak(above_avg_mod_idxes, extreme_max_idxs)
   max_sc <- sort(smooth_scores[above_avg_mod_idxes], decreasing = T)[1]
   m <- mean(density(smooth_scores)$x)
-  if (max_sc - m < 100) {
+  if (max_sc - m < 60) {
     print("No Peakkkkkkkk_____________")
     printout_NA_table(outfname)
     next
