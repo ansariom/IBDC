@@ -190,7 +190,7 @@ strands <- c("FWD", "REV")
 #outdir <- "~/Downloads/test/plots/"
 
 # Init default parameters 
-w <- 500 # win length for signal mode finder
+w <- 300 # win length for signal mode finder
 span <- 0.01 # span size [0,1] (small values = more sensitive)
 buffer_left <- 100
 buffer_right <- 100
