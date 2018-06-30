@@ -282,7 +282,7 @@ for (f in flist) {
     next
   }
   max_idx <- which(smooth_scores == max_sc)
-  if (locs[max_idx] <= -1000 | locs[max_idx] >= 1000) {
+  if (locs[max_idx] <= -1100 | locs[max_idx] >= 1100) {
     print("No Peakkkkkkkk_____________")
     printout_NA_table(outfname)
     next
