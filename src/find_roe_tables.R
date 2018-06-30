@@ -219,6 +219,11 @@ for (f in flist) {
 
   
   # find the modes and plot them
+  if (length(locs) < (w * 2)) {
+    print("no peaks are found!")
+    printout_NA_table(outfname)
+    next
+  }
   peaks <- argmax(locs, scores, w=w, span=span)
   plot_modes(plot_outdir)
   
