@@ -240,7 +240,7 @@ for (f in flist) {
   smooth_scores <- peaks$y.hat
   
   # Don't consider peaks beyond 1.5kb frim TSS
-  mod_idxes = mod_idxes[which(locs[mod_idxes] > -1000 & locs[mod_idxes] < 1000)]
+  #mod_idxes = mod_idxes[which(locs[mod_idxes] > -1000 & locs[mod_idxes] < 1000)]
   
   # Pre filter peaks that are almost equal to each other
   #if (!is_roe_exist(mod_idxes)) {
@@ -282,6 +282,11 @@ for (f in flist) {
     next
   }
   max_idx <- which(smooth_scores == max_sc)
+  if (locs[max_idx] <= -1000 | locs[max_idx] >= 1000) {
+    print("No Peakkkkkkkk_____________")
+    printout_NA_table(outfname)
+    next
+  }
   
   # set initial lef and right indexes for peak finding
   peak_mod_index <- max_idx
