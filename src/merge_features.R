@@ -68,7 +68,7 @@ diff_all <- diff
 
 # Mitra: lots of NAs in df > omit them
 diff <- na.omit(diff)
-diff <- diff[(abs(diff$b) > 4),]
+diff <- diff[(abs(diff$b) > 1),]
 
 
 # Mitra: Now we have less infomation to dig into => runtime cost will be reduced dramtically

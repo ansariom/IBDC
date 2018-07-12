@@ -10,7 +10,7 @@ root_peaks_file = args[2]
 gff_file <- args[3]
 outfile <- args[4]
 
-min_reads <- 100
+min_reads <- 50
 
 ############################################################
 ### Assign peaks to transcripts based on their distance
