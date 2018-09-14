@@ -2,10 +2,15 @@ queues = megraw,bpp,*@megraw2*
 python_bin = /local/cluster/bin/python
 prefix = roe
 nfolds = 5
-orig_coefs = $(prefix)/final_model/roe_only_coef_table.txt
+orig_coefs = ../ibdc_roe-only/med_high/3/39563/roe_only_coef_table.txt
 from = 5
 to = 380
 by = 20
+features = ../ibdc_roe-only/all_features_diffs_wide.rdat
+
+fc = 3
+mean_expr_file = ../db/ath_root_leaf_rsem_deseq_diff_expr_results.txt
+expr_thr = "med_high"
 
 all:
 	software/extract_pwms_for_removal.R $(orig_coefs) $(prefix) $(from) $(to) $(by)
@@ -13,10 +18,10 @@ all:
 		echo $$n; \
 		outdir=$(prefix)/top$$n; \
 		mkdir $$outdir; \
-		echo software/remove_features.R $(prefix)/all_features_diffs_wide.rdat $(prefix)/top$$n\_pwms.txt $$outdir  top$$n | \
+		echo software/remove_features.R $(features) $(prefix)/top$$n\_pwms.txt $$outdir  top$$n | \
 			SGE_Array -q $(queues) -m 10G -r $$outdir/j1_rm_features_$$n ;\
-		echo software/prepare_data_for_classification.R $$outdir/all_features_diffs_wide_top$$n\_removal.rdat roe_only $$outdir/roe_only_features_classed.csv $$outdir/roe_only_diff_info.csv |\
-			SGE_Array -m 10G -q $(queues) -r $$outdir/j1_prepare_train_data_$$n --hold_names $$outdir/j1_rm_features_$$n;\
+		echo software/prepare_data_for_classification_fc_expr_thresholded.R $$outdir/all_features_diffs_wide_top$$n\_removal.rdat roe_only $$outdir/roe_only_features_classed.csv $$outdir/roe_only_diff_info.csv $(fc) $(mean_expr_file) $(expr_thr) |\
+			SGE_Array -m 50G -q $(queues) -r $$outdir/j1_prepare_train_data_$$n --hold_names $$outdir/j1_rm_features_$$n;\
 		echo $(python_bin) software/train_test_crossVal_noScale.py -i $$outdir/roe_only_features_classed.csv -o $$outdir -n $(nfolds) -t roe_only |\
 			SGE_Array -q $(queues) -m 100G -r $$outdir/j1_crossval_train_test_$$n --hold_names $$outdir/j1_prepare_train_data_$$n; \
 		((n = n + $(by))); \
@@ -28,7 +33,6 @@ perfromance_gathering:
 		echo $$indir; \
 		outfile=$(prefix)/performances_top$$i\.txt; \
 		head $$indir/[1-9]*/*held* | grep -v "==" | grep -v "auroc" > $$outfile; \
-		#cat $$outfile | awk '{ sum1 += $1; sum2 += $2; n++ } END { if (n > 0) print sum1 / n "\t" sum2 / n; }'; 
 		((i = i+$(by))); \
 	done
 
