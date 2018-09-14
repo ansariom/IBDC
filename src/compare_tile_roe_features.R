@@ -46,8 +46,8 @@ ggplot(data, aes(y = pwm)) + labs(x = "promoter region", y = "PWM")  +
 roe_tile_wincoords = read.table("~/Downloads/roe_tile_coords.txt")
 colnames(roe_tile_wincoords) = c("feature", "start_tile", "end_tile")
 
-roe = read.table("~/Downloads/roe_only_coef_table.txt", col.names = c("feature", "coefficient"))
-tile = read.table("~/Downloads/tile_only_coef_table.txt", col.names = c("feature", "coefficient"))
+roe = read.table("~/Downloads/ibdc/Aug2018/tile_vs_roe/roe_only_coef_table.txt", col.names = c("feature", "coefficient"))
+tile = read.table("~/Downloads/ibdc/Aug2018/tile_vs_roe/tile_only_coef_table.txt", col.names = c("feature", "coefficient"))
 #tile = read.table("~/Downloads/ibdc_results/tile_only_2270/tile_only_coef_table.txt", col.names = c("feature", "coefficient"))
 
 # get tile coord for ROE wins
@@ -91,7 +91,9 @@ for (i in thresholds) {
   d <- data.frame(threshold = i, roe_only_npwm = roe_npwm_topX, tile_only_npwm = tile_npwm_topX, n_common = ncommonX)
   df = rbind(df, d)
 }
-
+df$mean_both <- apply(df[,c(2,3)], 1, mean)
+df$p_common <- (df$n_common / df$mean_both ) * 100
+df
 
 ######
 # plot a map of all features

@@ -1,7 +1,7 @@
 library(tidyr)
 
-tile_dir <- "~/Downloads/tile_coefs/"
-roe_dir = "~/Downloads/roe_coefs/"
+tile_dir <- "~/Downloads/ibdc/Aug2018/tile_vs_roe/tiles/"
+roe_dir = "~/Downloads/ibdc/Aug2018/tile_vs_roe/roes/"
 
 all_models_roe <- data.frame(feature=c(), coef=c())
 all_models_tile <- data.frame(feature=c(), coef=c())
@@ -20,12 +20,14 @@ tile_commons <-  extract(tile_commons, feature, c("pwm", "strand", "win"), regex
 tile_commons$left <- -1000 + (as.numeric(tile_commons$win) - 1) * 100
 tile_commons$right <- tile_commons$left + 100
 tile_commons$percent_observed <- tile_commons$nobservation/10 * 100
-hist(tile_commons$percent_observed, ylim = c(0, nrow(tile_commons)), ylab = "No of features showed up in all models" ,xlab = "%observation in 10 models", main = "Histogram of feature observations among top 200 features in 10 models")
+hist(tile_commons$percent_observed, ylim = c(0, nrow(tile_commons)), ylab = "No of features showed up in all models" ,
+     xlab = "%observation in 10 models", main = "Histogram of feature observations among top 200 features in 10 models")
 
 library(ggplot2)
 data = tile_commons[tile_commons$strand == "FWD", ]
 ggplot(data, aes(y = pwm)) + labs(x = "promoter region", y = "PWM")  + 
-  geom_segment(aes(x = data$left, y = pwm, xend = data$right, yend = pwm, color = nobservation), size = 1)  + scale_colour_gradient(low = "yellow", high = "blue") +
+  geom_segment(aes(x = data$left, y = pwm, xend = data$right, yend = pwm, color = nobservation), size = 1)  + 
+  scale_colour_gradient(low = "pink", high = "blue") +
   geom_point(aes(x = data$left, color = nobservation), size = 5, shape = 'I') +
   geom_point(aes(x = data$right, color = nobservation), size = 5, shape = 'I') + 
   scale_x_continuous(breaks=seq(-2000, 1500, 100)) +
@@ -38,7 +40,8 @@ ggplot(data, aes(y = pwm)) + labs(x = "promoter region", y = "PWM")  +
 
 data = tile_commons[tile_commons$strand == "REV", ]
 ggplot(data, aes(y = pwm)) + labs(x = "promoter region", y = "PWM")  + 
-  geom_segment(aes(x = data$left, y = pwm, xend = data$right, yend = pwm, color = nobservation), size = 1)  + scale_colour_gradient(low = "yellow", high = "blue") +
+  geom_segment(aes(x = data$left, y = pwm, xend = data$right, yend = pwm, color = nobservation), size = 1)  + 
+  scale_colour_gradient(low = "pink", high = "blue") +
   geom_point(aes(x = data$left, color = nobservation), size = 5, shape = 'I') +
   geom_point(aes(x = data$right, color = nobservation), size = 5, shape = 'I') + 
   scale_x_continuous(breaks=seq(-2000, 1500, 100)) +
@@ -125,7 +128,7 @@ all_coefs_all <-  extract(all_coefs_all, feature, c("pwm", "strand", "win", "typ
 all_models_roe <-  extract(all_models_tile, feature, c("pwm", "strand", "win", "type"), regex = "(.+?)_(FWD|REV)_(.)(.*)", remove = FALSE)
 all_coefs_all <-  extract(all_coefs_all, feature, c("pwm", "strand", "win", "type"), regex = "(.+?)_(FWD|REV)_(.)(.*)", remove = FALSE)
 
-all_models_tile <- all_models_roe
+#all_models_tile <- all_models_roe
 all_models_tile$fullpwm <- paste(all_models_tile$pwm, all_models_tile$type, sep = "")
 tfs_top50 <- unique(all_models_tile$fullpwm)
 all_coefs_all$fullpwm <- paste(all_coefs_all$pwm, all_coefs_all$type, sep = "")

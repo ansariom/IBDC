@@ -1,45 +1,66 @@
-load("~/Downloads/featureInfo_hardCodedSoftCoded.rdat")
-expr_mean = read.table("~/Downloads/mean_norm_leaf_root.txt", header = T)
+library(ggplot2)
 
-classified_data = diffs_classes[(diffs_classes["class"] != -1000),]
-expr_promoters <- merge(classified_data, expr_mean, by.x = "gene_id", by.y = "target_id")
-ggplot(expr_promoters, aes(mean_root_norm, mean_leaf_norm)) + geom_point(shape = 1) +
-  ggtitle("mean normalized expression levele for diff expressed genes")
+load("~/Downloads/ibdc/Aug2018/med_low/3/429916//featureInfo_hardCodedSoftCoded.rdat")
+low_diffs_classes <- diffs_classes
+low_diffs_classes <- low_diffs_classes[low_diffs_classes$mean_root_norm >=30 |low_diffs_classes$mean_leaf_norm >=30, ]
+load("~/Downloads/ibdc/Aug2018/med_high/2.5/147842/featureInfo_hardCodedSoftCoded.rdat")
+high_diffs_classes <- diffs_classes
+high_diffs_classes <- high_diffs_classes[high_diffs_classes$mean_root_norm >=300 |high_diffs_classes$mean_leaf_norm >=300, ]
 
-expr_promoters$mean_root_leaf_expr <- (expr_promoters$mean_leaf_norm + expr_promoters$mean_root_norm)/2
-expr_levels <- data.frame(table(cut(expr_promoters$mean_root_leaf_expr, breaks = seq(1, 500, 10))))
-expr_levels$bin <- seq(1, nrow(expr_levels))
-expr_levels$bin <- (expr_levels$bin - 1) * 10
-ggplot(expr_levels, aes(bin, Freq)) + geom_bar(stat = "identity") + xlab("mean normalized expression")
-lowly_expressed <- expr_promoters[expr_promoters$mean_leaf_norm < 20 & expr_promoters$mean_root_norm < 20,]
+l_classified_data = low_diffs_classes[(low_diffs_classes["class"] != -1000),]
+l_classified_data$data_type <- "med-low"
+h_classified_data = high_diffs_classes[(high_diffs_classes["class"] != -1000),]
+h_classified_data$data_type <- "med-high"
+classified_data <- rbind(l_classified_data, h_classified_data)
+
+ggplot(classified_data, aes(mean_root_norm, mean_leaf_norm)) + geom_point(shape = 1) +
+  ggtitle("mean normalized expression levele for diff expressed genes") + facet_wrap(~data_type)
+
+ex_low <- l_classified_data
+ex_high <- h_classified_data
+ex_low$mean_root_leaf_expr <- (ex_low$mean_leaf_norm + ex_low$mean_root_norm)/2
+ex_high$mean_root_leaf_expr <- (ex_high$mean_leaf_norm + ex_high$mean_root_norm)/2
+ex_low <- data.frame(table(cut(ex_low$mean_root_leaf_expr, breaks = seq(1, 500, 10))))
+ex_low$bin <- seq(1, nrow(ex_low))
+ex_high <- data.frame(table(cut(ex_high$mean_root_leaf_expr, breaks = seq(1, 500, 10))))
+ex_high$bin <- seq(1, nrow(ex_high))
+ex_low$data_type <- "med-low"
+ex_high$data_type <- "med-high"
+expr_levels <- rbind(ex_high, ex_low)
+ggplot(expr_levels, aes(bin, Freq)) + geom_bar(stat = "identity") + xlab("mean normalized expression")+ facet_wrap(~data_type)
 
 
 missclassified_1 = diffs_classes[(diffs_classes["prob0"]>0.5) & (diffs_classes["class"]==1),]
 missclassified_0 = diffs_classes[(diffs_classes["prob1"]>0.5) & (diffs_classes["class"]==0),]
 missclassified = rbind(missclassified_0, missclassified_1)
-expr_miss <- merge(missclassified, expr_mean, by.x = "gene_id", by.y = "target_id")
+expr_miss <- missclassified
+expr_miss$expr_mean <- (expr_miss$mean_root_norm+expr_miss$mean_leaf_norm)/2
 ggplot(expr_miss, aes(mean_root_norm, mean_leaf_norm)) + geom_point(shape = 1) +
-  ggtitle("mean normalized expression level for misclassified genes")
+  ggtitle("mean normalized expression level for misclassified genes")+ facet_wrap(~data_type)
+
 highest_diff_misclassed = expr_miss[expr_miss$mean_leaf_norm > 500 | expr_miss$mean_root_norm > 500,]
 
 correct_class_rowids = setdiff(row.names(classified_data),row.names(missclassified))
 correctly_classified = classified_data[correct_class_rowids,]
 
-aggregate(correctly_classified[,"prob0"], by=list(correctly_classified[,"class"]), mean)
-
-aggregate(missclassified[,"prob1"], by=list(missclassified[,"class"]), mean)
-aggregate(missclassified[,"prob0"], by=list(missclassified[,"class"]), mean)
-
 #### Plot the distribution of probabolities that leads to miss-classification
 library(ggplot2)
 missclassified <- within(missclassified, class_diff <- abs(prob1 - prob0))
 ggplot(missclassified, aes(prob0, prob1)) + geom_point(shape = 1, aes(colour = class_diff)) + 
-  ggtitle("Prob. of root (0) vs leaf(1) predictions for miss-classified data")
+  ggtitle("Prob. of root (0) vs leaf(1) predictions for miss-classified data")  + facet_wrap(~data_type)
 
-correctly_classified <- within(correctly_classified, class_diff <- abs(prob1-prob0))
-ggplot(correctly_classified, aes(prob0, prob1)) + geom_point(shape = 1, aes(colour = class_diff)) + 
-  ggtitle("Prob. of root (0) vs leaf(1) predictions for correctly-classified data")
+ggplot(missclassified) + geom_histogram(aes(prob0, fill = data_type, alpha = 0.6), position = "identity") + ggtitle("Histpgram of prob0 in misclassified")
+ggplot(missclassified) + geom_histogram(aes(prob1, fill = data_type, alpha = 0.6), position = "identity") + ggtitle("Histpgram of prob1 in misclassified")
+ggplot(missclassified) + geom_density(aes(prob0, fill = data_type, alpha = 0.6), position = "identity", stat = "density") + ggtitle("Density of prob0 in misclassified")
+ggplot(missclassified) + geom_density(aes(prob1, fill = data_type, alpha = 0.6), position = "identity", stat = "density") + ggtitle("Density of prob1 in misclassified")
 
+
+extremely_missclassified <- missclassified[missclassified["class_diff"] > 0.7, ]
+extremely_missclassified <- highest_diff_misclassed
+miss_ids = row.names(extremely_missclassified)
+
+m1 <- missclassified[missclassified$mean_root_norm > 300 & missclassified$mean_leaf_norm > 300,]
+aggregate(m1$data_type, list(m1$data_type), length)
 # ---------------------- ---------------------- ---------------------- ----------------------
 ### Where the features fall for missclassified as compared to correctly-classified feature dist.
 # ---------------------- ---------------------- ---------------------- ----------------------
@@ -47,7 +68,7 @@ library(reshape)
 correct_features <- features[correct_class_rowids,]
 correct_features = cbind(correct_features, class = correctly_classified[,"class"] [match(row.names(correct_features), row.names(correctly_classified))])
 
-extremely_missclassified <- missclassified[missclassified["class_diff"] > 0.6, ]
+extremely_missclassified <- missclassified[missclassified["class_diff"] > 0.7, ]
 extremely_missclassified <- highest_diff_misclassed
 miss_ids = row.names(extremely_missclassified)
 

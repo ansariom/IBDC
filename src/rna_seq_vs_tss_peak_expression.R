@@ -1,8 +1,51 @@
 library(ggplot2)
 library(gridExtra)
+library(tidyr)
 
-load("~/Downloads/leaf_tss_rna_seq.rdat")
-load("~/Downloads/root_tss_rna_seq.rdat")
+root_dir = "~/Downloads/ibdc/"
+expr_file = paste(root_dir, "mean_norm_leaf_root.txt", sep = "")
+peaks_file = paste(root_dir, "July2018/aligned.peaks.annotated.capped.filtered", sep = "")
+gff_file = paste(root_dir, "July2018/TAIR10_GFF3_genes_geneIds_geneType.txt", sep = "")
+
+leaf_ann_file <- "~/Downloads/ibdc/July2018/aligned.peaks.annotated_leaf.capped"
+root_ann_file <- "~/Downloads/ibdc/July2018/aligned.peaks.annotated_root.capped"
+
+expr <- read.table(expr_file, sep = "\t", header = T)
+peaks <- read.delim(peaks_file, sep = ",", header = T)
+gff <- read.delim(gff_file, sep = "\t", header = F)
+
+leaf_ann <- read.delim(leaf_ann_file, sep = ",", header = T)[,c("TranscriptID", "TranscriptLocation","X..Capped")]
+root_ann <- read.delim(root_ann_file, sep = ",", header = T)[,c("TranscriptID", "TranscriptLocation","X..Capped")]
+
+leaf_ann$tissue = "leaf"
+root_ann$tissue = "root"
+
+expr <- expr[!grepl("ATC|ATM", expr$target_id),]
+noTss <- expr[!expr$target_id %in% peaks$TranscriptID & expr$mean_leaf_norm > 1 & expr$mean_root_norm > 1,]
+noTss <- extract(noTss, target_id, "gene_id", regex = "([^.]+).\\d", remove = F)
+noTss <- merge(noTss, gff, by.x = "gene_id", by.y = "V10")
+gene_groups <- aggregate(noTss$V9, list(noTss$V9), length)
+noTss <- noTss[noTss$V9 == "protein_coding_gene",]
+
+noTss$avg_expr <- (noTss$mean_leaf_norm + noTss$mean_root_norm )/ 2
+noTss <- noTss[,c(1,2,3,4,13,14)]
+m <- table(cut(noTss$avg_expr, breaks = c(1, 5, 50, 1000)))
+m
+
+high_expr <- noTss[noTss$avg_expr > 100,]
+h <- merge(high_expr, leaf_ann, by.x = "target_id", by.y = "TranscriptID", all.x = T)
+h <- merge(h, root_ann, by.x = "target_id", by.y = "TranscriptID", all.x = T)
+hist(h$X..Capped.x)
+hist(h$X..Capped.y)
+
+aggregate(h$TranscriptLocation.x, list(h$TranscriptLocation.x), length)
+
+plot(noTss$mean_leaf_norm, noTss$mean_root_norm)
+absent_tss <- noTss[noTss$mean_leaf_norm > 1000 | noTss$mean_root_norm > 1000,]
+
+
+df <- merge(peaks, expr, by.x = "TranscriptID", by.y = "target_id")
+plot(df$mean_leaf_norm, df[df$tissue == "leaf",]$ReadCount)
 
 R = cor(leaf_tss_rna_seq$ReadCount, leaf_tss_rna_seq$mean_leaf_norm)
 R = format(round(R, 2), nsmall = 2)

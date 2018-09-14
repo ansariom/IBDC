@@ -89,12 +89,12 @@ prepare_plot_data <- function(avg_coefs_top50) {
     pad = 1
   )
 
-tile_dir <- "~/Downloads/tile_coefs_direct//"
-roe_dir = "~/Downloads/roe_coefs_direct//"
+tile_dir <- "~/Downloads/ibdc/Aug2018/tile_vs_roe/tiles/"
+roe_dir = "~/Downloads/ibdc/Aug2018/tile_vs_roe/roes/"
 top_count = 100
 tile_regx <- "(.+?)_(FWD|REV)_(.+)_tile100(.*)"
 roe_regx <- "(.+?)_(FWD|REV)_(.)(.*)"
-roe_win_coords = read.table("~/Downloads/ibdc/roe_win_coordinates.txt", col.names = c("feature", "left", "right")) # coordinates of each window in ROE table
+roe_win_coords = read.table("~/Downloads/ibdc/Aug2018/tile_vs_roe/roe_win_coords.txt", col.names = c("feature", "left", "right")) # coordinates of each window in ROE table
 
 # ----- Tiled Models ------
 l = read_files(tile_dir, top_count, tile_regx)
@@ -104,14 +104,14 @@ avg_coefs_top50_tile = avg_coef_computation(all_models_tile, all_coefs_tile, til
 avg_coefs_top50_tile$left <- -1000 + (as.numeric(avg_coefs_top50_tile$win) - 1) * 100
 avg_coefs_top50_tile$right <- avg_coefs_top50_tile$left + 100
 
-p_title = paste("Average model weights for top", top_count, " TFs in 80 Tiled models (FWD)", sep = "")
+p_title = paste("Average model weights for top", top_count, " TFs in 10 Tiled models (FWD)", sep = "")
 p_tile <- prepare_plot_data(avg_coefs_top50_tile)
 p <- p_tile
 plot_ly( z = p$mat_fwd, type = "heatmap", y = p$y_fwd, x = as.numeric(p$x_fwd), colors = c( "#641E16","white", "white", "#1D8348")) %>%
   layout(yaxis = a, xaxis = xaxis, showlegend = FALSE, margin = m, title = p_title)
 #plot_ly( z = p$mat_fwd, type = "heatmap", y = p$y_fwd, x = as.numeric(p$x_fwd), colors = c( "#641E16","white")) %>%
 #  layout(yaxis = a, xaxis = xaxis, showlegend = FALSE, margin = m, title = p_title)
-p_title = paste("Average model weights for top", top_count, " TFs in 80 Tiled models (REV)", sep = "")
+p_title = paste("Average model weights for top", top_count, " TFs in 10 Tiled models (REV)", sep = "")
 plot_ly( z = p$mat_rev, type = "heatmap", y = p$y_rev, x = as.numeric(p$x_rev), colors = c( "#641E16","white", "white", "#1D8348")) %>%
   layout(yaxis = a, xaxis = xaxis, showlegend = FALSE, margin = m, title = p_title)
 #plot_ly( z = p$mat_fwd, type = "heatmap", y = p$y_fwd, x = as.numeric(p$x_fwd), colors = c( "#641E16","white")) %>%
@@ -128,11 +128,11 @@ avg_coefs_top50_roe$fullPwm <- NULL
 
 p_roe <- prepare_plot_data(avg_coefs_top50_roe)
 p <- p_roe
-p_title = paste("Average model weights for top", top_count, " TFs in 80 ROE models (FWD)", sep = "")
+p_title = paste("Average model weights for top", top_count, " TFs in 10 ROE models (FWD)", sep = "")
 plot_ly( z = p$mat_fwd, type = "heatmap", y = p$y_fwd, x = as.numeric(p$x_fwd), colors = c( "#641E16","white", "white","white", "white" ,"#1D8348")) %>%
   layout(yaxis = a, xaxis = xaxis, showlegend = FALSE, margin = m, title = p_title)
 
-p_title = paste("Average model weights for top", top_count, " TFs in 80 ROE models (REV)", sep = "")
+p_title = paste("Average model weights for top", top_count, " TFs in 10 ROE models (REV)", sep = "")
 plot_ly( z = p$mat_rev, type = "heatmap", y = p$y_rev, x = as.numeric(p$x_rev), colors = c( "#641E16","white", "white", "#1D8348")) %>%
   layout(yaxis = a, xaxis = xaxis, showlegend = FALSE, margin = m, title = p_title)
 
@@ -171,9 +171,7 @@ ggplot(data, aes(y = pwm)) + labs(x = "promoter region", y = "PWM")  +
   theme(axis.text = element_text(size=7, color="black",face="bold"), axis.text.x = element_text(angle = 45)) + 
   theme(legend.text=element_text(size=9,face="bold")) +
   theme(strip.text = element_text(size=9,face="bold")) +
-  ggtitle("Comparison between Top 50 Highly Weighted Features in ROE vs. Tile Models (FWD)")
-+
-  facet_wrap(~model_type) 
+  ggtitle("Comparison between Top 50 Highly Weighted Features in ROE vs. Tile Models (FWD)")+  facet_wrap(~model_type) 
 
 data <- data_rev
 ggplot(data, aes(y = pwm)) + labs(x = "promoter region", y = "PWM")  + 
@@ -189,8 +187,7 @@ ggplot(data, aes(y = pwm)) + labs(x = "promoter region", y = "PWM")  +
   theme(axis.text = element_text(size=7, color="black",face="bold"), axis.text.x = element_text(angle = 45)) + 
   theme(legend.text=element_text(size=9,face="bold")) +
   theme(strip.text = element_text(size=9,face="bold")) +
-  ggtitle("Comparison between Top 50 Highly Weighted Features in ROE vs. Tile Models (REV)")
-+
+  ggtitle("Comparison between Top 50 Highly Weighted Features in ROE vs. Tile Models (REV)")+
   facet_wrap(~model_type) 
 # ----- numerical stats -----
 
