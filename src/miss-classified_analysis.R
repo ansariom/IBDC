@@ -1,6 +1,6 @@
 library(ggplot2)
 
-load("~/Downloads/ibdc/Aug2018/med_low/3/429916//featureInfo_hardCodedSoftCoded.rdat")
+load("~/Downloads/featureInfo_hardCodedSoftCoded.rdat")
 low_diffs_classes <- diffs_classes
 low_diffs_classes <- low_diffs_classes[low_diffs_classes$mean_root_norm >=30 |low_diffs_classes$mean_leaf_norm >=30, ]
 load("~/Downloads/ibdc/Aug2018/med_high/2.5/147842/featureInfo_hardCodedSoftCoded.rdat")
