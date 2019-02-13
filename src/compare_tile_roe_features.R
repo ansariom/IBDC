@@ -7,50 +7,17 @@ rev_roe <- read.table("~/Downloads/roe_3000.REV.table")
 
 # Analyzing tile-roe Model
 # ---------------------------------
-roe_tile <- read.table("~/Downloads/ibdc_results/tile_roe_4125/tile_roe_coef_table.txt", col.names = c("feature", "coefficient"))
-roe_win_coords = read.table("~/Downloads/roe_win_coords.txt", col.names = c("feature", "left", "right")) # coordinates of each window in ROE table
+fc = 2.5
+indir = paste("~/Downloads/ibdc/Oct2018//tile_vs_roe/current_oct2018/", fc, sep = "")
+win_coords_file = paste(indir, "/roe_win_coords.txt", sep = "")
 
-roe_tile <- extract(roe_tile, feature, c("pwm", "strand", "window"), regex = "(.+?)_(FWD|REV)_(\\d+)", remove = F)
-roe_tile$rank <- as.numeric(row.names(roe_tile))
-top100 <- roe_tile[roe_tile$rank < 50,]
+tile_coef_file <- paste(indir, "/tile_only_coef_table.txt", sep = "")
+roe_coef_file <- paste(indir, "/roe_only_coef_table.txt", sep = "")
 
-tile <- top100[grepl("tile100", top100$feature),]
-roe <- top100[!grepl("tile100", top100$feature),]
+roe_win_coords = read.table(win_coords_file, col.names = c("feature", "left", "right")) # coordinates of each window in ROE table
 
-roe = merge(roe, roe_win_coords, by = "feature")
-tile$left <- -1000 + (as.numeric(tile$window) - 1) * 100
-tile$right <- tile$left + 100
-
-select <- c("pwm", "strand", "left" , "right", "rank")
-data1 <- tile[, colnames(tile) %in% select]
-data2 <- roe[, colnames(roe) %in% select]
-
-data1$model_type <- "tile"
-data2$model_type  <- "roe"
-data <- rbind(data1, data2)
-data <- data[data$strand == "REV",]
-
-ggplot(data, aes(y = pwm)) + labs(x = "promoter region", y = "PWM")  + 
-  geom_segment(aes(x = data$left, y = pwm, xend = data$right, yend = pwm, color = model_type), size = 1)  +
-  geom_point(aes(x = data$left, color = model_type), size = 5, shape = 'I') +
-  geom_point(aes(x = data$right, color = model_type), size = 5, shape = 'I') + 
-  scale_x_continuous(breaks=seq(-1000, 500, 100)) +
-  theme_bw() +
-  theme(axis.text = element_text(size=9, color="black",face="bold")) + 
-  theme(legend.text=element_text(size=9,face="bold")) +
-  theme(strip.text = element_text(size=9,face="bold")) +
-  ggtitle("roe-tile model Top 50 coefs (REV)") 
-
-
-# ----------------
-roe_tile_wincoords = read.table("~/Downloads/roe_tile_coords.txt")
-colnames(roe_tile_wincoords) = c("feature", "start_tile", "end_tile")
-
-roe = read.table("~/Downloads/ibdc/Aug2018/tile_vs_roe/roe_only_coef_table.txt", col.names = c("feature", "coefficient"))
-tile = read.table("~/Downloads/ibdc/Aug2018/tile_vs_roe/tile_only_coef_table.txt", col.names = c("feature", "coefficient"))
-#tile = read.table("~/Downloads/ibdc_results/tile_only_2270/tile_only_coef_table.txt", col.names = c("feature", "coefficient"))
-
-# get tile coord for ROE wins
+roe = read.table(roe_coef_file, col.names = c("feature", "coefficient"))
+tile = read.table(tile_coef_file, col.names = c("feature", "coefficient"))
 
 
 roe$type <- "other"
@@ -77,7 +44,7 @@ roe = merge(roe, roe_win_coords, by = "feature")
 # how many pwms have at least one coefficients that fall in top 100
 #----------------------------
 df = data.frame(threshold = c(), roe_only_npwm = c(), tile_only_npwm=c(), n_common=c())
-thresholds = c(50, 100, 200, 300, 400, 500, 1000, 2000, 5000)
+thresholds = c(20, 50, 100, 200, 300, 400, 500, 1000, 2000, 5000)
 for (i in thresholds) {
   tileX = tile[tile$rank < i,]
   roeX = roe[roe$rank < i,]

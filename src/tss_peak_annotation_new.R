@@ -1,7 +1,7 @@
 #!/usr/bin/Rscript
 
-leaf_peaks_file <- "~/Downloads/ibdc/peaks/aligned.peaks.annotated.capped_leaf.filtered"
-root_peaks_file <- "~/Downloads/ibdc/peaks/aligned.peaks.annotated.capped_root.filtered"
+leaf_peaks_file <- "~/Downloads/ibdc/Aug2018//aligned.peaks.annotated_leaf.capped"
+root_peaks_file <- "~/Downloads/ibdc/Aug2018//aligned.peaks.annotated_root.capped"
 gff_file <- "~/Downloads/ibdc/peaks/TAIR10_GFF3_genes.gff"
 
 args <- commandArgs(trailingOnly = T)
@@ -44,6 +44,11 @@ library(tidyr)
 gff <- extract(gff, ID, c("gene_id", "transcript_id"), regex = "([^;]+);([^;]+);\\D+")
 gff <- extract(gff, gene_id, "TranscriptID", regex = "ID=([^;]+)")
 gff <- extract(gff, transcript_id, "GeneName", regex = "Parent=([^;]+)")
+
+
+same_start <- merge(gff, gff, by = "start")
+same_start <- same_start[same_start$GeneName.x != same_start$GeneName.y,]
+same_start_trx <- unique(same_start$TranscriptID.x)
 
 leaf_peaks <- leaf_peaks[leaf_peaks$ReadCount > min_reads & leaf_peaks$TranscriptLocation != "<500",]
 root_peaks <- root_peaks[root_peaks$ReadCount > min_reads & root_peaks$TranscriptLocation != "<500",]

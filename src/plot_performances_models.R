@@ -2,6 +2,12 @@
 
 args = commandArgs(trailingOnly = T)
 
+infile1 = "~/Downloads/ibdc/jan2018/tile_performances.txt"
+infile2 = "~/Downloads/ibdc/jan2018/roe_performances.txt"
+name1 = "Tile"
+name2 = "ROE"
+
+
 infile1 = args[1]
 infile2 = args[2]
 name1 = args[3]
@@ -28,6 +34,6 @@ library(grid)
 library(gridExtra)
 
 g = grid.arrange(p1, p2, nrow = 1)
-
+g
 ggsave(g, file = outfile_auc, dpi = 320, width = 12)
 
