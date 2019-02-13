@@ -1,3 +1,4 @@
+#!/usr/bin/Rscript
 library(PRROC)
 
 args <- commandArgs(trailingOnly = TRUE)
