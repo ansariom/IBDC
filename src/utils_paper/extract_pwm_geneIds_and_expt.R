@@ -3,25 +3,28 @@
 library(tidyr)
 huges_file <- "huges_genes_mats_multi_rows.txt"
 trans_file <- "transfac_genes_mats_multi_rows.txt"
-coef_file <- "roe_only_coef_table.txt"
-diff_file <- "diff_exp_results_with_geneIds.txt"
-mean_counts_file <- "mean_norm_leaf_root.txt"
+diff_file <- "../db/ath_root_leaf_rsem_deseq_diff_expr_results_filtered.txt"
 chosen_pwm_file <- "chosen_PWMs_V3.txt"
 
-equ_pwms <- read.table(chosen_pwm_file, header = T, fill = T)
-mean_counts <- read.table(mean_counts_file, header = T)
+# fc = 3
+fc = 3
+coef_file <- "../ibdc_roe-only/med_high/3/785440/roe_only_coef_table.txt"
+
+# fc 2.5
+# fc = 2.5
+#coef_file <- "../ibdc_roe-only/med_high/2.5/956178/roe_only_coef_table.txt"
+outfile = paste("model_weight_coefficient_table_with_gene_expr_fc_", fc, ".csv", sep = "")
+
 huges_genes <- read.table(huges_file, header = F, col.names=c("mat_id", "gene_id"))
 transcfac_genes <- read.delim(trans_file, sep = "\t", col.names = c("mat_id", "gene_id"))
 diff <- read.table(diff_file, header = T)
 coef_table <- read.table(coef_file, col.names = c("feature", "coef"))
 
 mat_table <- rbind(transcfac_genes, huges_genes)
-diff <- diff[, colnames(diff) %in% c("gene_id", "transcript_no", "Accession", "qval", "pval", "b")]
 diff <- na.omit(diff)
+diff <- extract(diff, Accession, c("gene_id"), regex= "(AT\\dG\\d+).\\d", remove = F)
 
-diff_counts <-  merge(diff, mean_counts, by.x="Accession", by.y = "target_id", all.y = T)
-
-mat_diff <- merge(mat_table, diff_counts, by = "gene_id")
+mat_diff <- merge(mat_table, diff, by = "gene_id")
 scols <- c("pval", "qval", "b", "mean_leaf_norm", "mean_root_norm")
 avg_expr <- aggregate(mat_diff[, colnames(mat_diff) %in% scols], list(gene_id = mat_diff$gene_id), mean)
 max_expr <- aggregate(mat_diff[, colnames(mat_diff) %in% scols], list(gene_id = mat_diff$gene_id), max)
@@ -52,4 +55,4 @@ final_out$feature_type <- "TFBS"
 final_out$feature_type[grepl("(OC_P_ROOT)|(OC_P_LEAF)", final_out$feature)] <- "OC"
 
 
-write.csv(final_out, "model_weight_coefficient_table_with_gene_expr.csv", quote = F, sep = ",", row.names = F)
+write.csv(final_out, outfile, quote = F, sep = ",", row.names = F)

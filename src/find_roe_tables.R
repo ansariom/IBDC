@@ -240,7 +240,7 @@ for (f in flist) {
   smooth_scores <- peaks$y.hat
   
   # Don't consider peaks beyond 1.5kb frim TSS
-  mod_idxes = mod_idxes[which(locs[mod_idxes] > -1000 & locs[mod_idxes] < 1000)]
+  mod_idxes = mod_idxes[which(locs[mod_idxes] > -1000 & locs[mod_idxes] < 600)]
   
   # Pre filter peaks that are almost equal to each other
   #if (!is_roe_exist(mod_idxes)) {

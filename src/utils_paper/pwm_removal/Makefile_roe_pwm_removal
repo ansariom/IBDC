@@ -2,23 +2,33 @@ queues = megraw,bpp,*@megraw2*
 python_bin = /local/cluster/bin/python
 prefix = roe
 nfolds = 5
-orig_coefs = ../ibdc_roe-only/med_high/3/39563/roe_only_coef_table.txt
+
+#fc 3 med-high
+roe_seed = 785440
+
+# fc 2.5 med-high
+#roe_seed = 956178
+#
+orig_coefs = ../ibdc_roe-only/med_high/$(fc)/$(roe_seed)/roe_only_coef_table.txt
 from = 5
 to = 380
 by = 20
-features = ../ibdc_roe-only/all_features_diffs_wide.rdat
+#features = ../ibdc_roe-only/all_features_diffs_wide.rdat
+features = ../ibdc_roe-only/med_high/$(fc)/$(roe_seed)/all_features_diffs_wide.rdat
 
 fc = 3
-mean_expr_file = ../db/ath_root_leaf_rsem_deseq_diff_expr_results.txt
+mean_expr_file = ../db/ath_root_leaf_rsem_deseq_diff_expr_results_filtered.txt
 expr_thr = "med_high"
+fc_out = $(prefix)/$(fc)
 
 all:
-	software/extract_pwms_for_removal.R $(orig_coefs) $(prefix) $(from) $(to) $(by)
-	 n=$(from); while [[ $$n -le $(to) ]]; do \
+	mkdir -p $(fc_out)
+	software/extract_pwms_for_removal.R $(orig_coefs) $(fc_out) $(from) $(to) $(by) ;\
+	n=$(from); while [[ $$n -le $(to) ]]; do \
 		echo $$n; \
-		outdir=$(prefix)/top$$n; \
-		mkdir $$outdir; \
-		echo software/remove_features.R $(features) $(prefix)/top$$n\_pwms.txt $$outdir  top$$n | \
+		outdir=$(fc_out)/top$$n; \
+		mkdir -p $$outdir; \
+		echo software/remove_features.R $(features) $(fc_out)/top$$n\_pwms.txt $$outdir  top$$n | \
 			SGE_Array -q $(queues) -m 10G -r $$outdir/j1_rm_features_$$n ;\
 		echo software/prepare_data_for_classification_fc_expr_thresholded.R $$outdir/all_features_diffs_wide_top$$n\_removal.rdat roe_only $$outdir/roe_only_features_classed.csv $$outdir/roe_only_diff_info.csv $(fc) $(mean_expr_file) $(expr_thr) |\
 			SGE_Array -m 50G -q $(queues) -r $$outdir/j1_prepare_train_data_$$n --hold_names $$outdir/j1_rm_features_$$n;\
@@ -29,15 +39,61 @@ all:
 
 perfromance_gathering:
 	i=$(from); while [[ $$i -lt $(to) ]]; do \
-		indir=$(prefix)/top$$i; \
+		indir=$(fc_out)/top$$i; \
 		echo $$indir; \
-		outfile=$(prefix)/performances_top$$i\.txt; \
+		outfile=$(fc_out)/performances_top$$i\.txt; \
 		head $$indir/[1-9]*/*held* | grep -v "==" | grep -v "auroc" > $$outfile; \
 		((i = i+$(by))); \
 	done
 
 plot:
-	mkdir $(prefix)/perf_tables; \
-        mv $(prefix)/performances_top* $(prefix)/perf_tables; \
-        ../software/plot_removal_performance.R $(prefix)/perf_tables/performances_top $(prefix)/perf_plot ROE $(from) $(to) $(by)
-	
+	mkdir $(fc_out)/perf_tables;  mv $(fc_out)/performances_top* $(fc_out)/perf_tables; \
+        ../software/plot_removal_performance.R $(fc_out)/perf_tables $(fc_out)/perf_plot ROE $(from) $(to) $(by)
+
+
+######
+seqcont_dir = seqContentTest/
+#fname="GC_ATContent"
+fname="ATContent"
+#fname="GCContent"
+seqCon_file = $(seqcont_dir)/$(fname).csv
+features_seqcontent_outfile = $(seqcont_dir)/$(fname).rdat
+classed_features_file = $(seqcont_dir)/$(fname)_classed.csv
+diff_outfile = $(seqcont_dir)/$(fname)_diff_info.csv
+
+seq_content:
+	outdir=$(seqcont_dir)/$(fname); \
+	mkdir -p $$outdir; \
+	echo $(python_bin) software/get_seq_content_tiled.py tmp.csv |\
+		SGE_Array -m 50G -q $(queues) -r $$outdir/j0_get_data_logs; \
+	echo "cat tmp.csv | awk '{if (NR == 1) {print substr(\$$0,4)} else {print \$$0}}' > $(seqCon_file)" |\
+		SGE_Array -q $(queues) -r $$outdir/j01_edit_eader_logs --hold_names $$outdir/j0_get_data_logs; \
+	echo software/seqContent_features.R $(seqCon_file) $(mean_expr_file) $(features_seqcontent_outfile) |\
+		SGE_Array -m 50G -q $(queues) -r $$outdir/j1_features_log --hold_names $$outdir/j01_edit_eader_logs; \
+	echo software/prepare_data_for_classification_fc_expr_thresholded.R $(features_seqcontent_outfile) "seqContent" $(classed_features_file) $(diff_outfile) $(fc) $(mean_expr_file) $(expr_thr) |\
+		SGE_Array -m 50G -q $(queues) -r $$outdir/j1_prepare_train_data --hold_names $$outdir/j1_features_log; \
+	echo $(python_bin) software/train_test_crossVal_noScale.py -i $(classed_features_file) -o $$outdir -n $(nfolds) -t seqContent |\
+			SGE_Array -q $(queues) -m 100G -r $$outdir/j1_crossval_train_test --hold_names $$outdir/j1_prepare_train_data
+
+
+seq_perf_gathering:
+	indir=$(seqcont_dir)/$(fname); \
+	echo $$indir; \
+	outfile=$(fname)\.performances\.txt; \
+	head $$indir/[1-9]*/*held* | grep -v "==" | grep -v "auroc" | awk '{print $$0"\t"$(fname)}' > $$outfile
+
+seq_plot:
+	mkdir $(seqcont_dir)/perf_tables; mv *Content\.performances\.txt $(seqcont_dir)/perf_tables; \
+	../software/plot_removal_performance_seqContent.R $(seqcont_dir)/perf_tables $(seqcont_dir)/perf_plot ROE 0 0 0
+
+seq_coef_ranks:
+	indir=$(seqcont_dir)/$(fname); \
+	echo $$indir; \
+	outfile=$(seqcont_dir)/$(fname)\.coefs\.txt; \
+	cat $$indir/[1-9]*/*coef* | awk '{print $$0"\t"$(fname)}' > $$outfile
+
+seq_plot_coefs:
+	mkdir $(seqcont_dir)/coefs; mv $(seqcont_dir)/*coefs\.txt $(seqcont_dir)/coefs; \
+	../software/plot_coefs_seqContent.R $(seqcont_dir)/coefs $(seqcont_dir)/coefs_plot
+
+

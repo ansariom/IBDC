@@ -39,7 +39,9 @@ if __name__ == '__main__':
     all_features_csv = args[2]    # features.csv without class labels
     outfile = args[3]    # outfile for probability of tissue-spec for given list of features
     scaled_outfile = args[4]  # output the scaled array for given all_features_csv
-    
+    scaling = args[5]    #1=no_scale, 2=mean and sd 3=0-1
+   
+    #print all_features_csv 
     # read input features, 1st column is tss_id and last column is class label
     x_test = []
     first_line = True
@@ -52,14 +54,17 @@ if __name__ == '__main__':
                 continue    
             x_test.append(np.asarray(row))
     x_test = np.asanyarray(x_test)
+    #x_test = pd.read_csv(all_features_csv)
 
     # 1- compute all_features_scaled using saved train_set 
+    print(x_test.shape)
     x_test_features = np.asanyarray(x_test[:,1:], np.float32)
     print(x_test_features.shape)
     x_test_tss_ids = np.asarray(x_test[:,0])
     print(x_test_tss_ids.shape)
     x_train = np.load(train_set)
     scaler = preprocessing.StandardScaler(with_mean=True, with_std=True).fit(x_train)
+    #scaler = preprocessing.MinMaxScaler().fit(x_train) 
     x_test_scaled = scaler.transform(x_test_features)
     
     run_model(x_test_scaled, x_test_tss_ids, outfile, model_file)

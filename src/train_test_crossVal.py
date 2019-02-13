@@ -113,15 +113,15 @@ def split_train_cross_val(nfold):
     '============================================='
     '      Plot the cross-validation AUCs'
     '============================================='
-    plot_file = outdir + "/" + argsDict["model_type"] + "_auc_vs_params_crossval.png"
-    plt.figure(figsize=(8, 6), dpi=300)
-    df = pd.DataFrame(fold_results, columns=["fold", "param", "auc", "prc"])
-    fig, ax = plt.subplots()
-    colors = {0:'red', 1:'blue', 2:'green', 3:'black', 4:'orange'}
-    grouped = df.groupby('fold')
-    for key, group in grouped:
-        group.plot(ax=ax, kind='line', x='param', y='auc', label=key, color=colors[key], xlim = [0, 0.01], ylim = [0.4, 1])
-    plt.savefig(plot_file, dpi=300)
+    #plot_file = outdir + "/" + argsDict["model_type"] + "_auc_vs_params_crossval.png"
+    #plt.figure(figsize=(8, 6), dpi=300)
+    #df = pd.DataFrame(fold_results, columns=["fold", "param", "auc", "prc"])
+    #fig, ax = plt.subplots()
+    #colors = {0:'red', 1:'blue', 2:'green', 3:'black', 4:'orange'}
+    #grouped = df.groupby('fold')
+    #for key, group in grouped:
+    #    group.plot(ax=ax, kind='line', x='param', y='auc', label=key, color=colors[key], xlim = [0, 0.01], ylim = [0.4, 1])
+    #plt.savefig(plot_file, dpi=300)
     
     return mean_param
 

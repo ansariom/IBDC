@@ -1,31 +1,48 @@
-queues = megraw,bpp,*@megraw2*
+queues = megraw,*@megraw2*
 python_bin = /local/cluster/bin/python
 prefix = tile
 nfolds = 5
-orig_coefs = $(prefix)/orig_coef_table.txt
+
+#fc 3 med-high
+roe_seed = 636389
+
+# fc 2.5 med-high
+#roe_seed = 1093827
+# #
+orig_coefs = ../ibdc_tile-only/med_high/$(fc)/$(roe_seed)/tile_only_coef_table.txt
+from = 5
+to = 45
+by = 20
+features = ../ibdc_tile-only/all_features_diffs_wide.rdat
+#
+fc = 3
+mean_expr_file = ../db/ath_root_leaf_rsem_deseq_diff_expr_results_filtered.txt
+expr_thr = "med_high"
+fc_out = $(prefix)/$(fc)
 
 all:
-	software/extract_pwms_for_removal.R $(orig_coefs) $(prefix) 
-	 n=220; while [[ $$n -le 440 ]]; do \
+	mkdir -p $(fc_out)
+	software/extract_pwms_for_removal.R $(orig_coefs) $(fc_out) $(from) $(to) $(by) ;\
+	n=$(from); while [[ $$n -le $(to) ]]; do \
 		echo $$n; \
-		outdir=$(prefix)/top$$n; \
+		outdir=$(fc_out)/top$$n; \
 		mkdir $$outdir; \
-		echo software/remove_features.R $(prefix)/all_features_diffs_wide.rdat $(prefix)/top$$n\_pwms.txt $$outdir  top$$n | \
+		echo software/remove_features.R $(features) $(fc_out)/top$$n\_pwms.txt $$outdir  top$$n | \
 			SGE_Array -q $(queues) -m 10G -r $$outdir/j1_rm_features_$$n ;\
-		echo software/prepare_data_for_classification.R $$outdir/all_features_diffs_wide_top$$n\_removal.rdat tile_only $$outdir/tile_only_features_classed.csv $$outdir/tile_only_diff_info.csv |\
+		echo software/prepare_data_for_classification_fc_expr_thresholded.R $$outdir/all_features_diffs_wide_top$$n\_removal.rdat tile_only $$outdir/tile_only_features_classed.csv $$outdir/tile_only_diff_info.csv $(fc) $(mean_expr_file) $(expr_thr) |\
 			SGE_Array -m 10G -q $(queues) -r $$outdir/j1_prepare_train_data_$$n --hold_names $$outdir/j1_rm_features_$$n;\
 		echo $(python_bin) software/train_test_crossVal_noScale.py -i $$outdir/tile_only_features_classed.csv -o $$outdir -n $(nfolds) -t tile_only |\
 			SGE_Array -q $(queues) -m 100G -r $$outdir/j1_crossval_train_test_$$n --hold_names $$outdir/j1_prepare_train_data_$$n; \
-		((n = n + 20)); \
+		((n = n + $(by))); \
 	done
 
 perfromance_gathering:
-	i=20; while [[ $$i -lt 490 ]]; do \
-        	indir=$(prefix)/top$$i; \
+	i=$(from); while [[ $$i -lt $(to) ]]; do \
+        	indir=$(fc_out)/top$$i; \
                 echo $$indir; \
-                outfile=$(prefix)/performances_top$$i\.txt; \
+                outfile=$(fc_out)/performances_top$$i\.txt; \
                 head $$indir/[1-9]*/*held* | grep -v "==" | grep -v "auroc" > $$outfile; \
-		((i = i+20)); \
+		((i = i+$(by))); \
         done
 
 plot:
