@@ -12,6 +12,6 @@ fi
 
 awk '/^>/ {printf("\n%s\n",$0);next; } { printf("%s",$0);}  END {printf("\n");}' < $inseqs | tail -n +2 > tmp.fa
 
-split -a 3 -d -l $nseqs_pfile tmp.fa $outdir/$base.
+split -a 3 -d -l $(($nseqs_pfile*2)) tmp.fa $outdir/$base.
 
 rm -f tmp.fa

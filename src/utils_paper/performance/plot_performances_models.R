@@ -7,7 +7,9 @@ infile2 = args[2]
 name1 = args[3]
 name2 = args[4]
 model_type= args[5]
-outfile_auc = paste(model_type, "performance.plots.ROE-Tile.png", sep = "")
+outdir = args[6]
+
+outfile_auc = paste(outdir, model_type, "_performance.plots.ROE-Tile.png", sep = "")
 #outfile_prc = paste(infile, ".plots.auprc.png", sep = "")
 
 df1 <- read.table(infile1, header = F, col.names = c("auROC", "auPRC", "Expr_Level", "fold_change"))

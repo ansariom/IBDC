@@ -1,6 +1,9 @@
 #!/bin/bash
 
 # produce almost empty files with the exact number of files as upcoming sequences
+#peakfile=$1
+#ntotal=`grep -c ">" $peakfile`
+#echo $ntotal
 ntotal=$1
 nseq_pfile=$2
 
@@ -9,6 +12,7 @@ seq_outdir=$4
 seq_outbase=$5
 
 n=$(($ntotal/100))
+n=$(($n+1))
 p=$(($nseq_pfile/100))
 
 rm -f $fakefile

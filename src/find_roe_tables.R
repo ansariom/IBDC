@@ -179,10 +179,10 @@ outdir <- args[2]
 pwm_labels <- args[3]
 table_outbase <- args[4]
 
-input_dist_dir <- "~/Downloads/dists/"
-outdir <- "~/Downloads/ibdc/new_roe"
-pwm_labels <- "~/Downloads/ibdc/pwm_labels.txt"
-table_outbase <- "roe_table"
+#input_dist_dir <- "~/Downloads/dists/"
+#outdir <- "~/Downloads/ibdc/new_roe"
+#pwm_labels <- "~/Downloads/ibdc/pwm_labels.txt"
+#table_outbase <- "roe_table"
 
 strands <- c("FWD", "REV")
 
