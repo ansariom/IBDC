@@ -1,4 +1,4 @@
-infile = "~/Downloads/all_features_diffs_wide.rdat"
+infile = "~/Downloads/ibdc/aug2019/all_features_diffs_wide_withAT.rdat"
 load(infile)
 
 diffs_colnames <- c("gene_id", "pval", "qval", "b", "se_b", "mean_obs", "var_obs",
@@ -6,7 +6,7 @@ diffs_colnames <- c("gene_id", "pval", "qval", "b", "se_b", "mean_obs", "var_obs
                     "tss_name", "chr", "loc", "strand", "offset?")
 features <- all_features_diffs_wide[, !colnames(all_features_diffs_wide) %in% diffs_colnames]
 
-oc <- features[, grepl("_OC_", colnames(features))]
+oc <- features[, grepl("OC_", colnames(features))]
 tfbs <- features[, !colnames(features) %in% colnames(oc)]
 
 tfbs_sd <- as.data.frame(apply(tfbs, MARGIN = 2, sd))
@@ -17,11 +17,11 @@ oc_sd <- as.data.frame(apply(oc, MARGIN = 2, sd))
 colnames(oc_sd) <- c("oc_sd")
 hist(oc_sd$oc_sd, xlab = "variance", main = "Histogram of OC feature value's standard deviation \n Original OC values")
 #------- Max norm
-infile = "~/Downloads/all_features_diffs_wide_TFBSmaxNorm.rdat"
-load(infile)
+#infile = "~/Downloads/all_features_diffs_wide_TFBSmaxNorm.rdat"
+#load(infile)
 features <- all_features_diffs_wide[, !colnames(all_features_diffs_wide) %in% diffs_colnames]
 
-oc <- features[, grepl("_OC_", colnames(features))]
+oc <- features[, grepl("OC_", colnames(features))]
 tfbs <- features[, !colnames(features) %in% colnames(oc)]
 
 tfbs_sd <- as.data.frame(apply(tfbs, MARGIN = 2, sd))

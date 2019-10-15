@@ -6,7 +6,7 @@ type="rawTFBS"
 type = "normByMeanSd"
 type = "normBy01"
 
-model_indir <- "~/Downloads/ibdc/Nov2018/models/"
+model_indir <- "~/Downloads/ibdc/aug2019/"
 path = paste(model_indir, type, sep = "")
 path = paste(path, "/after_reduction", sep = "")
 load(paste(path, "/featureInfo_hardCodedSoftCoded.rdat", sep = ""))
@@ -184,12 +184,26 @@ write.csv(all, file = "~/Downloads/ibdc/Oct2018/highscore_tfbs_classes_for_top_w
 
 # openness
 #############
+topTFBS <- feature_info[feature_info$type == "SLL",]
+hist(topTFBS$coefficient, xlab = "model weight", main = "Histogram of model weights for TFBS features")
+topTFBS <- topTFBS[order(-abs(topTFBS$coefficient)),]
+topTFBS <- topTFBS[1:20,]
+ggplot(topTFBS, aes(factor(window), coefficient)) + geom_boxplot() + xlab("ROE window") + ggtitle("model weights for Top 20 TFBS features and ROE window")
+head(topTFBS)
+
+topOC <- feature_info[feature_info$type == "OC",]
+hist(topOC$coefficient,  xlab = "model weight", main = "Histogram of model weights for OC features")
+topOC <- topOC[order(-abs(topOC$coefficient)),]
+topOC <- topOC[1:20,]
+ggplot(topOC, aes(factor(window), coefficient)) + geom_boxplot()+ xlab("ROE window") + ggtitle("model weights for Top 20 OC features and ROE window")
+head(topOC)
+
 
 feature_info$feature_name <- paste(feature_info$pwm, feature_info$strand, feature_info$window, sep = "_")
-oc_features <- feature_info[feature_info$feature_name %in% top20$feature_name & feature_info$type == "OC",]
+oc_features <- feature_info[feature_info$feature_name %in% topTFBS$feature_name & feature_info$type == "OC",]
 # coefs of top weighted features
 oc_features$type <- "top_tfbs"
-othe_oc_features <- feature_info[!feature_info$feature_name %in% top20$feature_name & feature_info$type == "OC",]
+othe_oc_features <- feature_info[!feature_info$feature_name %in% topTFBS$feature_name & feature_info$type == "OC",]
 othe_oc_features$type <- "others"
 all <- rbind(oc_features,othe_oc_features)
 ggplot(all) + geom_histogram(aes(all$coefficient, fill = type), alpha = 0.5, position = "identity") + ggtitle("comparision between the OC weights of top weighted TFBS features and the rest of TFBS features ")
@@ -216,4 +230,7 @@ root_oc$tissue <- "ROOT"
 
 all <- rbind(root_oc, leaf_oc)
 all <- extract(all, key, into = "key", regex = "(.+)_OC_P.*", remove = T)
-ggplot(all) + geom_boxplot(aes(key, value, fill = tissue, alpha = 0.5) ) + theme(axis.text.x = element_text(angle = 45)) + xlab("feature") + ggtitle("OC openness for ROOT and LEAF top weighted features")
+ggplot(all) + geom_boxplot(aes(key, value, fill = tissue, alpha = 0.5) ) + theme(axis.text.x = element_text(angle = 90)) + 
+  xlab("Top weighted TFBS feature") + ylab("%OC opennes") + ggtitle("OC openness for ROOT and LEAF top weighted features")
+ggplot(all) + geom_violin(aes(key, value, fill = tissue, alpha = 0.5) ) + theme(axis.text.x = element_text(angle = 90)) + 
+  xlab("Top weighted TFBS feature") + ylab("%OC opennes") + ggtitle("OC openness for ROOT and LEAF top weighted features")

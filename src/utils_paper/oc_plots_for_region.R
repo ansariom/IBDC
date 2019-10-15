@@ -10,6 +10,43 @@ plot_oc <- function(root_oc, leaf_oc, left, right, title) {
   ir1 <- IRanges(root_oc_in_region$rel_start, width = root_oc_in_region$width)
   ir2 <- IRanges(leaf_oc_in_region$rel_start, width = leaf_oc_in_region$width)
   
+  par(mfrow=c(1,2))
+  plot_coverage(ir1, tissue = "ROOT")
+  plot_coverage(ir2, tissue = "SHOOT")
+  
+  
+}
+
+plot_coverage <- function(ir, tissue = "ROOT", xadj = -3000.5) {
+  ir <- IRanges(start(ir) + 3000, end(ir) + 3000)
+  cov = coverage(ir)
+  plotRanges(x = ir, main=paste(tissue, " Open Regions", sep = ""))
+  cov <- as.vector(cov)
+  mat <- cbind(seq_along(cov) + xadj, cov)
+  d <- diff(cov) != 0
+  mat <- rbind(cbind(mat[d,1]+1, mat[d,2]), mat)
+  mat <- mat[order(mat[,1]),]
+  lines(mat, col="red", lwd=4)
+  axis(2)
+}
+
+plotRanges <- function(x, main=main_title, col="#ACA2A2", sep=0.5, ...) {
+  height <- 1
+  x <- IRanges(start(x) - 3000, end(x) - 3000)
+  xlim = x
+  if (is(xlim, "IntegerRanges")) 
+    xlim <- c(min(start(xlim)), max(end(xlim)))
+  bins <- disjointBins(IRanges(start(x), end(x) + 1))
+  plot.new()
+  plot.window(xlim, c(0, max(bins)*(height + sep)))
+  ybottom <- bins * (sep + height) - height
+  rect(start(x)-0.5, ybottom, end(x)+0.5, ybottom + height, col=col, border = NA)
+  title(main)
+  new_x = start(x) - 3000
+  axis(1)
+}
+
+plot_oc_mitra <- function(ir1, ir2) {
   bins1 <- disjointBins(IRanges(start(ir1), end(ir1) + 1))
   bins2 <- disjointBins(IRanges(start(ir2), end(ir2) + 1))
   dat1 <- cbind(as.data.frame(ir1), bin = bins1)
@@ -26,8 +63,8 @@ plot_oc <- function(root_oc, leaf_oc, left, right, title) {
     theme_bw() + 
     facet_wrap(~tissue) +
     ggtitle(paste("Genome-wide Open Chromatin state relative to TSS locations \n", title, sep = ""))
-    #ggtitle("OC coverage for leaf/root specific genes (diff expressed promoters only)\n root OC in leaf-specific promoters vs. leaf OC in root-specific promoters")
-    #ggtitle("Genome-wide Open Chromatin state relative to TSS locations ")  
+  #ggtitle("OC coverage for leaf/root specific genes (diff expressed promoters only)\n root OC in leaf-specific promoters vs. leaf OC in root-specific promoters")
+  #ggtitle("Genome-wide Open Chromatin state relative to TSS locations ")  
   
 }
 
@@ -102,16 +139,17 @@ plot_oc_both <- function(root_oc, leaf_oc, left, right, title) {
   
 }
 
-leaf_open_promoter <- "~/Downloads/leaf_promoter_open_regions_3000-3000.txt"
-root_open_promoter <- "~/Downloads/root_promoter_open_regions_3000-3000.txt"
-all_tss <- "~/Downloads/aligned.peaks.annotated.capped.filtered"
+indir = "~/Downloads/ibdc/aug2019/"
+leaf_open_promoter <- paste(indir, "/leaf_promoter_open_regions_3000-3000.txt", sep = "")
+root_open_promoter <- paste(indir, "/root_promoter_open_regions_3000-3000.txt", sep = "")
+all_tss <- paste(indir, "/aligned.peaks.annotated.capped.filtered", sep = "")
 
 col_names = c("tss_id", "oc_id", "chr", "start", "end", "rel_start", "rel_end")
 leaf_oc <- read.table(leaf_open_promoter, col.names = col_names)
 root_oc <- read.table(root_open_promoter, col.names = col_names)
 
-left <- -500
-right <- 0
+left <- -3000
+right <- 3000
 
 plot_oc(root_oc, leaf_oc, left, right, "ROOT and LEAF OC comparison")
 

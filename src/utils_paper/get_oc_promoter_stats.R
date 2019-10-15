@@ -1,22 +1,62 @@
-leaf_open_promoter <- "~/Downloads/leaf_promoter_open_regions_3000-3000.txt"
-root_open_promoter <- "~/Downloads/root_promoter_open_regions_3000-3000.txt"
-all_tss <- "~/Downloads/aligned.peaks.annotated.capped.filtered"
-#######
-all_tss_root <- "~/Downloads/aligned.peaks.annotated.capped_root.filtered"
-all_tss_leaf <- "~/Downloads/aligned.peaks.annotated.capped_leaf.filtered"
+indir = "~/Downloads/ibdc/aug2019/"
+leaf_open_promoter <- paste(indir, "leaf_promoter_open_regions_3000-3000.txt", sep = "")
+root_open_promoter <- paste(indir, "root_promoter_open_regions_3000-3000.txt", sep = "")
+all_tss <- paste(indir, "/aligned.peaks.annotated.capped.filtered", sep = "")
 
-root_tss <- read.delim(all_tss_root, header = T, sep = ",")
-leaf_tss <- read.delim(all_tss_leaf, header = T, sep = ",")
+#######
+df_tss <- read.delim(all_tss, sep = ",", header = T)
+head(df_tss)
+
+df_tss$tss_id <- paste(df_tss$Chromosome, df_tss$TranscriptID, df_tss$Strand, df_tss$ModeLocation, df_tss$tissue, sep = "_")
+aggregate(df_tss$tss_id, list(df_tss$tissue), length)
+tss_per_trx <- aggregate(df_tss$tss_id, list(df_tss$tissue, df_tss$TranscriptID), length)
+head(tss_per_trx)
+a = as.data.frame(table(tss_per_trx[tss_per_trx$Group.1 == "root",]$x))
+a$tissue <- "root"
+b = as.data.frame(table(tss_per_trx[tss_per_trx$Group.1 == "leaf",]$x))
+b$tissue = "shoot"
+counts = rbind(a,b)
+colnames(counts) <- c("num_transcripts", "tss_count", "tissue")
+ggplot(counts, aes(num_transcripts, tss_count, col = tissue, shape = tissue)) + geom_point() + theme_bw() + 
+  ggtitle("Number of mapped TSS peaks  and transcript counts")
+
+mapped_loc <- aggregate(df_tss$tss_id, list(df_tss$tissue, df_tss$TranscriptLocation), length)
+colnames(mapped_loc) <- c("Tissue", "Location", "No_TSSs")
+ggplot(mapped_loc, aes(x = Location, y = No_TSSs, fill = Tissue)) +
+  geom_col() + ylab("Number of TSS peaks") + xlab("Transcript Location") +
+  theme_bw() + ggtitle("Promoter location for mapped TSS peaks relative to Transcripts")
+
+length(unique(df_tss$TranscriptID))
+
+aggregate(df_tss$TranscriptID, list(df_tss$tissue, df_tss$TranscriptID), length)
+
+root_tss <- df_tss[df_tss$tissue == "root",]
+leaf_tss <- df_tss[df_tss$tissue == "leaf",]
+
+length(unique(root_tss$TranscriptID))
+length(unique(leaf_tss$TranscriptID))
 
 both <- merge(root_tss, leaf_tss, by = "TranscriptID")
 both$left <- ifelse(both$Start.x > both$Start.y, both$Start.x, both$Start.y) 
 both$right <- ifelse(both$End.x < both$End.y, both$End.x, both$End.y)
 both$overlap <- ifelse(both$Start.x > both$End.y,0, ifelse(both$End.x < both$Start.y, 0, abs(both$left - both$right)))
+both$mod_dist <- abs(both$ModeLocation.x - both$ModeLocation.y)
+both$tss_dist_groups <- cut(both$mod_dist, breaks = c(seq(0,4, by=5), seq(5,30, by=26), seq(31,100, by=70), seq(101,max(both$mod_dist), by=(max(both$mod_dist)-101))), 
+                            include.lowest = T)
+ggplot(both, aes(factor(tss_dist_groups))) + geom_bar(stat = "count", fill="steelblue") + xlab("TSS mode distance (base pair)") + 
+  geom_text(aes(label=count), vjust=1.6, color="white", size=3.5) + theme_minimal()
+
+ggplot(both, aes(factor(tss_dist_groups), fill = tss_dist_groups)) + geom_bar(stat = "count", col = "black") + xlab("TSS mode distance (base pair)") + 
+  theme_minimal() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#A69F00")) + geom_text(stat='count', aes(label=..count..), vjust=-1)
 
 both$tss <- "tss"
 ggplot(both, aes(tss, overlap)) + geom_violin() + ylab( "Size of overlap between TSS peaks (basepair)") +
-  xlab("") + ggtitle("Size of overlap between root and leaf TSS peaks in same promoter")
-boxplot(both$overlap, xlab =)
+  xlab("") + ggtitle("Size of overlap between root and shoot TSS peaks in each promoter")
+mean(both$overlap)
+median(both$overlap)
+hist(both$overlap)
+both$range <- cut(both$overlap, c(seq(-1,50, by = 10)))
+table(both$range)
 #######
 
 
@@ -144,7 +184,7 @@ d = data.frame(location = "1000-3000", bp = r)
 
 ggplot(df, aes(x = location, y = bp, fill = location)) +
   geom_violin() + ylab("Size of Open region (basepair)") + xlab("Relative Location to TSS") +
-  theme_bw() + ggtitle("Coverage Regions of Open Chromatin (Root)")
+  theme_bw() + ggtitle("Coverage Regions of Open Chromatin (Shoot)")
 
 table(df$location)
 
