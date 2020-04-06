@@ -39,7 +39,7 @@ colnames(counts) <- c("num_transcripts", "tss_count", "tissue")
 g <- ggplot(counts, aes(num_transcripts, tss_count, col = tissue, shape = tissue)) + geom_point() + theme_bw() + 
   ggtitle("Number of mapped TSS peaks  and transcript counts")
 g
-outfile = paste(indir, "tss_ntranscripts.png")
+outfile = paste(indir, "tss_ntranscripts.png", sep = "")
 ggsave(g, file = outfile)
 
 mapped_loc <- aggregate(df_tss$tss_id, list(df_tss$tissue, df_tss$TranscriptLocation), length)
@@ -48,7 +48,7 @@ g <- ggplot(mapped_loc, aes(x = Location, y = No_TSSs, fill = Tissue)) +
   geom_col() + ylab("Number of TSS peaks") + xlab("Transcript Location") +
   theme_bw() + ggtitle("Promoter location for mapped TSS peaks relative to Transcripts")
 
-outfile = paste(indir, "tss_mapped_locs_promoter.png")
+outfile = paste(indir, "tss_mapped_locs_promoter.png", sep = "")
 ggsave(g, file = outfile)
 
 length(unique(df_tss$TranscriptID))
@@ -61,11 +61,11 @@ leaf_tss <- df_tss[df_tss$tissue == "leaf",]
 length(unique(root_tss$TranscriptID))
 length(unique(leaf_tss$TranscriptID))
 
-both <- merge(root_tss, leaf_tss, by = "TranscriptID")
-both$left <- ifelse(both$Start.x > both$Start.y, both$Start.x, both$Start.y) 
-both$right <- ifelse(both$End.x < both$End.y, both$End.x, both$End.y)
-both$overlap <- ifelse(both$Start.x > both$End.y,0, ifelse(both$End.x < both$Start.y, 0, abs(both$left - both$right)))
-both$mod_dist <- abs(both$ModeLocation.x - both$ModeLocation.y)
+both <- merge(root_tss, leaf_tss, by = "TranscriptID", suffixes = c(".root", ".leaf"))
+both$left <- ifelse(both$Start.root > both$Start.leaf, both$Start.root, both$Start.leaf) 
+both$right <- ifelse(both$End.root < both$End.leaf, both$End.root, both$End.leaf)
+both$overlap <- ifelse(both$Start.root > both$End.leaf,0, ifelse(both$End.root < both$Start.leaf, 0, abs(both$left - both$right)))
+both$mod_dist <- abs(both$ModeLocation.root - both$ModeLocation.leaf)
 both$tss_dist_groups <- cut(both$mod_dist, breaks = c(seq(0,4, by=5), seq(5,100, by=96), seq(101,max(both$mod_dist), by=(max(both$mod_dist)-101))), 
                             include.lowest = T)
 #ggplot(both, aes(factor(tss_dist_groups))) + geom_bar(stat = "count", fill="steelblue") + xlab("TSS mode distance (base pair)") + 
@@ -75,10 +75,14 @@ g <- ggplot(both, aes(factor(tss_dist_groups), fill = tss_dist_groups)) + geom_b
   theme_minimal() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#A69F00")) + geom_text(stat='count', aes(label=..count..), vjust=-1) +
   scale_x_discrete(labels = c("[0,5]" = "0-5","(5,101]"  ="5-100", "(101,3.42e+03]" = ">100"))
 
-outfile = paste(indir, "tss_mod_distance_barplot.png")
+outfile = paste(indir, "tss_mod_distance_barplot.png", sep = "")
 ggsave(g, file = outfile)
 
 de_tss <- both[both$TranscriptID %in% up_down_trx$Accession,]
+
+outfile = paste(indir, "DE_transcripts_TSS_mod_distance.txt", sep = "")
+write.table(de_tss, file = outfile, quote = F, row.names = F, col.names = T, sep = "\t")
+
 g <- ggplot(de_tss, aes(factor(tss_dist_groups), fill = tss_dist_groups)) + geom_bar(stat = "count", col = "black") + xlab("TSS mode distance (base pair)") + 
   theme_minimal() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#A69F00")) + geom_text(stat='count', aes(label=..count..), vjust=-1) +
   scale_x_discrete(labels = c("[0,5]" = "0-5","(5,101]"  ="5-100", "(101,3.42e+03]" = ">100"))
@@ -103,12 +107,12 @@ table(both$range)
 
 #------------ OC stats on not-DE transcripts not having diff TSS ---------
 nde_tss <- de_tss[de_tss$mod_dist < 30,]
-length(unique(nde_tss$tss_id.x))
+length(unique(nde_tss$tss_id.root))
 
-nde_tss$tss_id.x <- paste(nde_tss$TranscriptID, nde_tss$Chromosome.x, nde_tss$ModeLocation.x, nde_tss$Strand.x, sep = "_")
-nde_tss$tss_id.y <- paste(nde_tss$TranscriptID, nde_tss$Chromosome.y, nde_tss$ModeLocation.y, nde_tss$Strand.y, sep = "_")
-nde_tss <- nde_tss[,c("tss_id.x", "tss_id.y", "mod_dist")]
-colnames(nde_tss) <- c("tss_id.root", "tss_id.leaf", "mod_dist")
+nde_tss$tss_id.root <- paste(nde_tss$TranscriptID, nde_tss$Chromosome.root, nde_tss$ModeLocation.root, nde_tss$Strand.root, sep = "_")
+nde_tss$tss_id.leaf <- paste(nde_tss$TranscriptID, nde_tss$Chromosome.leaf, nde_tss$ModeLocation.leaf, nde_tss$Strand.leaf, sep = "_")
+nde_tss <- nde_tss[,c("tss_id.root", "tss_id.leaf", "mod_dist")]
+#colnames(nde_tss) <- c("tss_id.root", "tss_id.leaf", "mod_dist")
 
 orig_nde_tss <- nde_tss
 
