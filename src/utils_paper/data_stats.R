@@ -51,6 +51,9 @@ length(both_trx)
 length(unique(both_trx[both_trx %in% tss_ts$TranscriptID]))
 
 not_in_both <- tss_ts[!tss_ts$TranscriptID %in% both_trx,]
+length(unique(not_in_both[not_in_both$tissue == "root", "TranscriptID"]))
+length(unique(not_in_both[not_in_both$tissue == "leaf", "TranscriptID"]))
+
 aggregate(not_in_both$tissue, list(not_in_both$tissue), length)
 
 oc_closed <- c(r[r != 0], l[l != 0])

@@ -1,17 +1,30 @@
 library(ggplot2)
-indir = "~/Downloads/ibdc/aug2019/"
-leaf_open_promoter <- paste(indir, "leaf_promoter_open_regions_3000-3000.txt", sep = "")
-root_open_promoter <- paste(indir, "root_promoter_open_regions_3000-3000.txt", sep = "")
+
+desktop_mode = FALSE
+
+args = commandArgs(trailingOnly = T)
+leaf_open_promoter = args[1]
+root_open_promoter = args[2]
+all_tss <- args[3]
+diff_expr_file = args[4]
+
+if (desktop_mode) {
+  indir = "~/Downloads/ibdc/aug2019/"
+  leaf_open_promoter <- paste(indir, "leaf_promoter_open_regions_3000-3000.txt", sep = "")
+  root_open_promoter <- paste(indir, "root_promoter_open_regions_3000-3000.txt", sep = "")
+  all_tss <- paste(indir, "/aligned.peaks.annotated.capped.filtered", sep = "")
+  diff_expr_file = "~/Downloads/ath_root_leaf_rsem_deseq_diff_expr_results.txt"
+}
+
 col_names = c("tss_id", "oc_id", "chr", "start", "end", "rel_start", "rel_end")
 leaf_oc <- read.table(leaf_open_promoter, col.names = col_names)
 root_oc <- read.table(root_open_promoter, col.names = col_names)
 
-all_tss <- paste(indir, "/aligned.peaks.annotated.capped.filtered", sep = "")
-de_trx <- read.table("~/Downloads/ath_root_leaf_rsem_deseq_diff_expr_results.txt", header = T)
+de_trx <- read.table(diff_expr_file, header = T)
 up_down_trx <- de_trx[abs(de_trx$foldChange) > 3 & (de_trx$mean_leaf_norm > 300 | de_trx$mean_root_norm > 300),]
-#######
 df_tss <- read.delim(all_tss, sep = ",", header = T)
 head(df_tss)
+#######
 
 df_tss$tss_id <- paste(df_tss$Chromosome, df_tss$TranscriptID, df_tss$Strand, df_tss$ModeLocation, df_tss$tissue, sep = "_")
 aggregate(df_tss$tss_id, list(df_tss$tissue), length)
@@ -49,8 +62,8 @@ both$overlap <- ifelse(both$Start.x > both$End.y,0, ifelse(both$End.x < both$Sta
 both$mod_dist <- abs(both$ModeLocation.x - both$ModeLocation.y)
 both$tss_dist_groups <- cut(both$mod_dist, breaks = c(seq(0,4, by=5), seq(5,100, by=96), seq(101,max(both$mod_dist), by=(max(both$mod_dist)-101))), 
                             include.lowest = T)
-ggplot(both, aes(factor(tss_dist_groups))) + geom_bar(stat = "count", fill="steelblue") + xlab("TSS mode distance (base pair)") + 
-  geom_text(aes(label=count), vjust=1.6, color="white", size=3.5) + theme_minimal()
+#ggplot(both, aes(factor(tss_dist_groups))) + geom_bar(stat = "count", fill="steelblue") + xlab("TSS mode distance (base pair)") + 
+#  geom_text(aes(label=count), vjust=1.6, color="white", size=3.5) + theme_minimal()
 
 ggplot(both, aes(factor(tss_dist_groups), fill = tss_dist_groups)) + geom_bar(stat = "count", col = "black") + xlab("TSS mode distance (base pair)") + 
   theme_minimal() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#A69F00")) + geom_text(stat='count', aes(label=..count..), vjust=-1) +
@@ -118,141 +131,3 @@ length(unique(a$Group.2))
 length(unique(nde_tss$TranscriptID))
 length(unique(de_tss$TranscriptID))
 nde_tss <- nde_tss[, c("tss_id.leaf", "tss_id.root", "mod_dist", "overlap")]
-
-a = de_tss[1,]
-a$tss_id.x
-a$tss_id.y
-
-#######
-
-
-all_peaks <- read.delim(all_tss, sep = ",", header = T)
-all_peaks$pstart <- all_peaks$Start - 3000
-all_peaks$tss_name <- paste(all_peaks$TranscriptID, all_peaks$Chromosome, all_peaks$Start - 3000, all_peaks$Strand, sep = "_")
-
-col_names = c("tss_id", "oc_id", "chr", "start", "end", "rel_start", "rel_end")
-leaf_oc <- read.table(leaf_open_promoter, col.names = col_names)
-root_oc <- read.table(root_open_promoter, col.names = col_names)
-
-m = merge(all_peaks, root_oc, by.x = "tss_name", by.y = "tss_id")
-close_root <- all_peaks[all_peaks$tss_name %in% root_oc$tss_id,]
-length(unique(root_oc$tss_id))
-length(unique(leaf_oc$tss_id))
-
-#root_oc <- leaf_oc
-
-#all
-left = -1000
-right = 1000
-root_oc$allL <- ifelse(root_oc$rel_start < left, left, root_oc$rel_start)
-root_oc$allR <- ifelse(root_oc$rel_end > right, right, root_oc$rel_end)
-
-
-# -100 to +100
-left = -200
-right = 200
-
-root_oc$tssL <- ifelse(root_oc$rel_start < left, left, root_oc$rel_start)
-root_oc$tssR <- ifelse(root_oc$rel_end > right, right, root_oc$rel_end)
-
-# 100 to 500
-left = 200
-right = 600
-root_oc$down500L <- ifelse(root_oc$rel_start < left, left, root_oc$rel_start)
-root_oc$down500R <- ifelse(root_oc$rel_end > right, right, root_oc$rel_end)
-  
-# 1000 to 3000
-left = 600
-right = 1000
-root_oc$down1000L <- ifelse(root_oc$rel_start < left, left, root_oc$rel_start)
-root_oc$down1000R <- ifelse(root_oc$rel_end > right, right, root_oc$rel_end)
-
-left = 1000
-right = 3000
-root_oc$down3000L <- ifelse(root_oc$rel_start < left, left, root_oc$rel_start)
-root_oc$down3000R <- ifelse(root_oc$rel_end > right, right, root_oc$rel_end)
-
-# -500 to -1000
-left = -200
-right = -600
-root_oc$up500L <- ifelse(root_oc$rel_start < left, left, root_oc$rel_start)
-root_oc$up500R <- ifelse(root_oc$rel_end > right, right, root_oc$rel_end)
-  
-# 1000 to 3000
-left = -600
-right = -1000
-root_oc$up1000L <- ifelse(root_oc$rel_start < left, left, root_oc$rel_start)
-root_oc$up1000R <- ifelse(root_oc$rel_end > right, right, root_oc$rel_end)
-
-left = -1000
-right = -3000
-root_oc$up3000L <- ifelse(root_oc$rel_start < left, left, root_oc$rel_start)
-root_oc$up3000R <- ifelse(root_oc$rel_end > right, right, root_oc$rel_end)
-
-###########
-df <- data.frame(location = c(), bp=c())
-#all
-left = -1000
-right = 1000
-root_oc$all <- ifelse(root_oc$rel_end < left, 0, ifelse(root_oc$rel_start > right, 0, abs(root_oc$allL - root_oc$allR) ))
-r = root_oc[root_oc$all > 0, "all"]
-d = data.frame(location = "All(-1000_+1000)", bp = r)
-df <- rbind(df, d)
-
-left = -1000
-right = -3000
-root_oc$up3000 <- ifelse(root_oc$rel_end < left, 0, ifelse(root_oc$rel_start > right, 0, abs(root_oc$up3000L - root_oc$up3000R) ))
-r = root_oc[root_oc$up3000 > 0, "up3000"]
-d = data.frame(location = "-1000_-3000", bp = r)
-#df <- rbind(df, d)
-
-left = -600
-right = -1000
-root_oc$up1000 <- ifelse(root_oc$rel_end < left, 0, ifelse(root_oc$rel_start > right, 0, abs(root_oc$up1000L - root_oc$up1000R) ))
-r = root_oc[root_oc$up1000 > 0, "up1000"]
-d = data.frame(location = "-600_-1000", bp = r)
-df <- rbind(df, d)
-
-left = -200
-right = -600
-root_oc$up500 <- ifelse(root_oc$rel_end < left, 0, ifelse(root_oc$rel_start > right, 0, abs(root_oc$up500L - root_oc$up500R) ))
-r = root_oc[root_oc$up500 > 0, "up500"]
-d = data.frame(location = "-200_-600", bp = r)
-df <- rbind(df, d)
-
-left = -200
-right = 200
-root_oc$TSS <- ifelse(root_oc$rel_end < left, 0, ifelse(root_oc$rel_start > right, 0, abs(root_oc$tssR - root_oc$tssL) ))
-r = root_oc[root_oc$TSS > 0, "TSS"]
-d = data.frame(location = "TSS", bp = r)
-df <- rbind(df, d)
-
-left = 200
-right = 600
-root_oc$down500 <- ifelse(root_oc$rel_end < left, 0, ifelse(root_oc$rel_start > right, 0, abs(root_oc$down500L - root_oc$down500R) ))
-r = root_oc[root_oc$down500 > 0, "down500"]
-d = data.frame(location = "200-600", bp = r)
-df <- rbind(df, d)
-
-left = 600
-right = 1000
-root_oc$down1000 <- ifelse(root_oc$rel_end < left, 0, ifelse(root_oc$rel_start > right, 0, abs(root_oc$down1000L - root_oc$down1000R) ))
-r = root_oc[root_oc$down1000 > 0, "down1000"]
-d = data.frame(location = "600-1000", bp = r)
-df <- rbind(df, d)
-
-left = 1000
-right = 3000
-root_oc$down3000 <- ifelse(root_oc$rel_end < left, 0, ifelse(root_oc$rel_start > right, 0, abs(root_oc$down3000L - root_oc$down3000R) ))
-r = root_oc[root_oc$down3000 > 0, "down3000"]
-d = data.frame(location = "1000-3000", bp = r)
-#df <- rbind(df, d)
-
-ggplot(df, aes(x = location, y = bp, fill = location)) +
-  geom_violin() + ylab("Size of Open region (basepair)") + xlab("Relative Location to TSS") +
-  theme_bw() + ggtitle("Coverage Regions of Open Chromatin (Shoot)")
-
-table(df$location)
-
-v = root_oc[root_oc$down3000 >0,]
-

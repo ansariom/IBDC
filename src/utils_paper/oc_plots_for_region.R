@@ -10,7 +10,7 @@ plot_oc <- function(root_oc, leaf_oc, left, right, title) {
   ir1 <- IRanges(root_oc_in_region$rel_start, width = root_oc_in_region$width)
   ir2 <- IRanges(leaf_oc_in_region$rel_start, width = leaf_oc_in_region$width)
   
-  par(mfrow=c(1,2))
+  par(mfrow=c(2,1))
   plot_coverage(ir1, tissue = "ROOT")
   plot_coverage(ir2, tissue = "SHOOT")
   
@@ -37,10 +37,12 @@ plotRanges <- function(x, main=main_title, col="#ACA2A2", sep=0.5, ...) {
   if (is(xlim, "IntegerRanges")) 
     xlim <- c(min(start(xlim)), max(end(xlim)))
   bins <- disjointBins(IRanges(start(x), end(x) + 1))
+  print(par("mar"))
+  par(mar=c(2,2,2,1))
   plot.new()
   plot.window(xlim, c(0, max(bins)*(height + sep)))
   ybottom <- bins * (sep + height) - height
-  rect(start(x)-0.5, ybottom, end(x)+0.5, ybottom + height, col=col, border = NA)
+  #rect(start(x)-0.5, ybottom, end(x)+0.5, ybottom + height, col=col, border = NA)
   title(main)
   new_x = start(x) - 3000
   axis(1)
