@@ -1,6 +1,6 @@
 library(ggplot2)
 
-desktop_mode = FALSE
+desktop_mode = TRUE
 
 args = commandArgs(trailingOnly = T)
 leaf_open_promoter = args[1]
@@ -9,11 +9,11 @@ all_tss <- args[3]
 diff_expr_file = args[4]
 
 if (desktop_mode) {
-  indir = "~/Downloads/ibdc/aug2019/"
+  indir = "./"
   leaf_open_promoter <- paste(indir, "leaf_promoter_open_regions_3000-3000.txt", sep = "")
   root_open_promoter <- paste(indir, "root_promoter_open_regions_3000-3000.txt", sep = "")
-  all_tss <- paste(indir, "/aligned.peaks.annotated.capped.filtered", sep = "")
-  diff_expr_file = "~/Downloads/ath_root_leaf_rsem_deseq_diff_expr_results.txt"
+  all_tss <- paste(indir, "aligned.peaks.annotated.capped.filtered", sep = "")
+  diff_expr_file = paste(indir,"ath_root_leaf_rsem_deseq_diff_expr_results.txt", sep = "")
 }
 
 col_names = c("tss_id", "oc_id", "chr", "start", "end", "rel_start", "rel_end")
@@ -36,14 +36,20 @@ b = as.data.frame(table(tss_per_trx[tss_per_trx$Group.1 == "leaf",]$x))
 b$tissue = "shoot"
 counts = rbind(a,b)
 colnames(counts) <- c("num_transcripts", "tss_count", "tissue")
-ggplot(counts, aes(num_transcripts, tss_count, col = tissue, shape = tissue)) + geom_point() + theme_bw() + 
+g <- ggplot(counts, aes(num_transcripts, tss_count, col = tissue, shape = tissue)) + geom_point() + theme_bw() + 
   ggtitle("Number of mapped TSS peaks  and transcript counts")
+g
+outfile = paste(indir, "tss_ntranscripts.png")
+ggsave(g, file = outfile)
 
 mapped_loc <- aggregate(df_tss$tss_id, list(df_tss$tissue, df_tss$TranscriptLocation), length)
 colnames(mapped_loc) <- c("Tissue", "Location", "No_TSSs")
-ggplot(mapped_loc, aes(x = Location, y = No_TSSs, fill = Tissue)) +
+g <- ggplot(mapped_loc, aes(x = Location, y = No_TSSs, fill = Tissue)) +
   geom_col() + ylab("Number of TSS peaks") + xlab("Transcript Location") +
   theme_bw() + ggtitle("Promoter location for mapped TSS peaks relative to Transcripts")
+
+outfile = paste(indir, "tss_mapped_locs_promoter.png")
+ggsave(g, file = outfile)
 
 length(unique(df_tss$TranscriptID))
 
@@ -65,16 +71,25 @@ both$tss_dist_groups <- cut(both$mod_dist, breaks = c(seq(0,4, by=5), seq(5,100,
 #ggplot(both, aes(factor(tss_dist_groups))) + geom_bar(stat = "count", fill="steelblue") + xlab("TSS mode distance (base pair)") + 
 #  geom_text(aes(label=count), vjust=1.6, color="white", size=3.5) + theme_minimal()
 
-ggplot(both, aes(factor(tss_dist_groups), fill = tss_dist_groups)) + geom_bar(stat = "count", col = "black") + xlab("TSS mode distance (base pair)") + 
+g <- ggplot(both, aes(factor(tss_dist_groups), fill = tss_dist_groups)) + geom_bar(stat = "count", col = "black") + xlab("TSS mode distance (base pair)") + 
   theme_minimal() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#A69F00")) + geom_text(stat='count', aes(label=..count..), vjust=-1) +
   scale_x_discrete(labels = c("[0,5]" = "0-5","(5,101]"  ="5-100", "(101,3.42e+03]" = ">100"))
 
+outfile = paste(indir, "tss_mod_distance_barplot.png")
+ggsave(g, file = outfile)
+
 de_tss <- both[both$TranscriptID %in% up_down_trx$Accession,]
-ggplot(de_tss, aes(factor(tss_dist_groups), fill = tss_dist_groups)) + geom_bar(stat = "count", col = "black") + xlab("TSS mode distance (base pair)") + 
+g <- ggplot(de_tss, aes(factor(tss_dist_groups), fill = tss_dist_groups)) + geom_bar(stat = "count", col = "black") + xlab("TSS mode distance (base pair)") + 
   theme_minimal() + scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9", "#A69F00")) + geom_text(stat='count', aes(label=..count..), vjust=-1) +
   scale_x_discrete(labels = c("[0,5]" = "0-5","(5,101]"  ="5-100", "(101,3.42e+03]" = ">100"))
-ggplot(de_tss, aes(mod_dist)) + geom_histogram(binwidth = 2) + xlab("TSS mode distance (base pair)") + 
+outfile = paste(indir, "diffexpr_tss_mod_distance_barplot.png")
+ggsave(g, file = outfile)
+
+g <- ggplot(de_tss, aes(mod_dist)) + geom_histogram(binwidth = 2) + xlab("TSS mode distance (base pair)") + 
   theme_minimal() 
+
+outfile = paste(indir, "diffexpr_tss_mod_distance_histogram.png")
+ggsave(g, file = outfile)
 
 
 both$tss <- "tss"
